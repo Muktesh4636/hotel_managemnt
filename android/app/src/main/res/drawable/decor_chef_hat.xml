@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Puffy top -->
+    <path
+        android:fillColor="#FFF8F6F2"
+        android:pathData="M24,44 Q20,28 32,20 Q40,12 48,18 Q56,10 64,20 Q76,28 72,44 Q48,48 24,44z" />
+    <path
+        android:fillColor="#FFE8E4DD"
+        android:pathData="M32,24 Q48,16 64,24 Q60,32 48,34 Q36,32 32,24z" />
+    <!-- Band -->
+    <path
+        android:fillColor="#FFF0EBE4"
+        android:pathData="M18,42 L78,42 L80,52 L16,52z" />
+    <!-- Shadow -->
+    <path
+        android:fillColor="#20C2543D"
+        android:pathData="M20,52 L76,52 L74,58 L22,58z" />
+</vector>

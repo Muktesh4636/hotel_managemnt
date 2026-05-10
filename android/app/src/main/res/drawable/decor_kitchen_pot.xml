@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Steam -->
+    <path
+        android:fillColor="#50FFFFFF"
+        android:pathData="M40,12 Q42,20 40,28 Q38,20 40,12 M48,8 Q50,18 48,28 Q46,18 48,8 M56,14 Q58,22 56,30 Q54,22 56,14" />
+    <!-- Pot body -->
+    <path
+        android:fillColor="#FF3D4A54"
+        android:pathData="M22,34 L74,34 Q76,34 76,36 L74,58 Q72,68 48,70 Q24,68 22,58 L20,36 Q20,34 22,34z" />
+    <path
+        android:fillColor="#FF2A3440"
+        android:pathData="M24,38 L72,38 L70,56 Q68,64 48,66 Q28,64 26,56z" />
+    <!-- Rim -->
+    <path
+        android:fillColor="#FF5A6570"
+        android:pathData="M18,32 L78,32 Q80,32 80,34 L80,38 Q48,42 16,38 L16,34 Q16,32 18,32z" />
+    <!-- Handles -->
+    <path
+        android:fillColor="#FF4A5560"
+        android:pathData="M14,40 Q10,44 14,50 L16,48 Q14,44 16,40z M82,40 Q86,44 82,50 L80,48 Q82,44 80,40z" />
+    <!-- Flames -->
+    <path
+        android:fillColor="#FFE85D2C"
+        android:pathData="M36,72 Q48,58 60,72 Q52,68 48,76 Q44,68 36,72z" />
+    <path
+        android:fillColor="#FFFFB020"
+        android:pathData="M42,74 Q48,66 54,74 Q50,72 48,78 Q46,72 42,74z" />
+</vector>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Steam -->
+    <path
+        android:fillColor="#40FFFFFF"
+        android:pathData="M44,8 Q46,14 44,20 Q42,14 44,8 M50,6 Q52,12 50,18 Q48,12 50,6 M56,10 Q58,16 56,22 Q54,16 56,10" />
+    <!-- Plate -->
+    <path
+        android:fillColor="#FFE8DDD4"
+        android:pathData="M12,52 Q48,62 84,52 L84,56 Q48,68 12,56z" />
+    <path
+        android:fillColor="#FFF5EDE8"
+        android:pathData="M18,50 Q48,58 78,50 Q48,54 18,50z" />
+    <!-- Greens -->
+    <path
+        android:fillColor="#FF5D8A4E"
+        android:pathData="M38,38 Q48,28 58,38 Q52,44 48,46 Q44,44 38,38z" />
+    <!-- Tomato -->
+    <path
+        android:fillColor="#FFD6453C"
+        android:pathData="M52,36 A10,10 0 1,1 52,56 A10,10 0 1,1 52,36z" />
+    <!-- Garnish / lemon -->
+    <path
+        android:fillColor="#FFE8C547"
+        android:pathData="M62,42 A8,8 0 1,1 62,58 A8,8 0 1,1 62,42z" />
+    <!-- Sauce accent -->
+    <path
+        android:fillColor="#FFC2543D"
+        android:pathData="M42,48 Q48,52 54,48 Q48,50 42,48z" />
+</vector>

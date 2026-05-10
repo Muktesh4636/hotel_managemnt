@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Table top -->
+    <path
+        android:fillColor="#FF8B6914"
+        android:pathData="M8,48 L88,48 L84,56 L12,56z" />
+    <path
+        android:fillColor="#FFA67C2D"
+        android:pathData="M12,44 L84,44 L88,48 L8,48z" />
+    <!-- Cloth -->
+    <path
+        android:fillColor="#FFF5EDE6"
+        android:pathData="M16,40 L80,40 L84,44 L12,44z" />
+    <!-- Small plate -->
+    <path
+        android:fillColor="#FFE8DDD4"
+        android:pathData="M36,36 Q48,30 60,36 Q48,40 36,36z" />
+    <path
+        android:fillColor="#FFE85D2C"
+        android:pathData="M42,34 Q48,32 54,34 Q48,36 42,34z" />
+    <!-- Wine glass hint -->
+    <path
+        android:fillColor="#80B8D4E8"
+        android:pathData="M68,28 L72,28 L72,40 L70,44 L66,44 L64,40 L64,28z M66,44 L70,44 L70,48 L66,48z" />
+</vector>

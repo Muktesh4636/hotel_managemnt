@@ -1,0 +1,20 @@
+# Android / Gradle
+**/.gradle/
+**/.kotlin/
+**/build/
+**/local.properties
+*.iml
+.idea/
+
+# Python
+**/.venv/
+**/__pycache__/
+*.py[cod]
+
+# OS / editor
+.DS_Store
+
+# Keys / secrets (do not commit)
+*.keystore
+.env
+.env.*
