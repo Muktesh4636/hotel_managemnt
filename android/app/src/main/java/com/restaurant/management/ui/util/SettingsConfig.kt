@@ -50,11 +50,9 @@ fun multilineToPipeList(multiline: String): String =
 
 data class ModuleFlags(
     val kitchen: Boolean = true,
-    val reservations: Boolean = true,
     val qrMenu: Boolean = true,
     val inventory: Boolean = true,
     val staff: Boolean = true,
-    val reports: Boolean = true,
     val expenses: Boolean = true,
 )
 
@@ -65,11 +63,9 @@ fun parseModulesJson(raw: String?): ModuleFlags {
         val o = JSONObject(s)
         ModuleFlags(
             kitchen = o.optBoolean("kitchen", true),
-            reservations = o.optBoolean("reservations", true),
             qrMenu = o.optBoolean("qrMenu", true),
             inventory = o.optBoolean("inventory", true),
             staff = o.optBoolean("staff", true),
-            reports = o.optBoolean("reports", true),
             expenses = o.optBoolean("expenses", true),
         )
     } catch (_: Exception) {
@@ -80,11 +76,9 @@ fun parseModulesJson(raw: String?): ModuleFlags {
 fun modulesToJson(flags: ModuleFlags): String =
     JSONObject().apply {
         put("kitchen", flags.kitchen)
-        put("reservations", flags.reservations)
         put("qrMenu", flags.qrMenu)
         put("inventory", flags.inventory)
         put("staff", flags.staff)
-        put("reports", flags.reports)
         put("expenses", flags.expenses)
     }.toString()
 
@@ -95,12 +89,12 @@ fun hubRouteEnabled(
     when (route) {
         Destinations.MENU_ADMIN,
         Destinations.SETTINGS,
+        Destinations.REPORTS,
+        Destinations.ORDERS,
         -> true
         Destinations.QR_MENU -> flags.qrMenu
         Destinations.INVENTORY -> flags.inventory
         Destinations.EXPENSES -> flags.expenses
-        Destinations.RESERVATIONS -> flags.reservations
         Destinations.STAFF -> flags.staff
-        Destinations.REPORTS -> flags.reports
         else -> true
     }

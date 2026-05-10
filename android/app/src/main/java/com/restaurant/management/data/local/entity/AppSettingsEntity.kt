@@ -15,6 +15,6 @@ data class AppSettingsEntity(
     val menuCategories: String = "",
     /** Pipe-separated expense categories for the Expenses screen. Empty → app defaults. */
     val expenseCategories: String = "",
-    /** JSON flags: kitchen, reservations, qrMenu, inventory, staff, reports, expenses. */
+    /** JSON flags: kitchen, qrMenu, inventory, staff, reports, expenses. */
     val modulesJson: String = "",
 )

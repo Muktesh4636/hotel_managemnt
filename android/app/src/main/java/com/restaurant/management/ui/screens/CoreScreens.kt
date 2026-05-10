@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -367,13 +368,14 @@ object CoreScreens {
         totalCents: Int,
         vm: RestaurantViewModel,
     ) {
+        val context = LocalContext.current
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(12.dp)) {
-                Text("#$orderId · ${labelOrderStatus(status)} · ${formatCents(totalCents)}")
+                Text("Order ID: $orderId · ${labelOrderStatus(status)} · ${formatCents(totalCents)}")
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
                     if (status == OrderStatus.OPEN) {
-                        Button(onClick = { vm.sendToKitchen(orderId) }) {
-                            Text("Fire kitchen")
+                        Button(onClick = { vm.printOrderBill(context, orderId) }) {
+                            Text("Print")
                         }
                     }
                     if (status == OrderStatus.READY) {
@@ -444,7 +446,7 @@ object CoreScreens {
                     ) {
                         Column(Modifier.padding(12.dp)) {
                             Text(
-                                "Order #${ow.order.id} · ${labelOrderStatus(ow.order.status)}",
+                                "Order ID: ${ow.order.id} · ${labelOrderStatus(ow.order.status)}",
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )

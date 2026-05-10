@@ -3,21 +3,25 @@ package com.restaurant.management.data
 import android.content.Context
 import android.net.Uri
 import com.restaurant.management.data.local.AppDatabase
+import com.restaurant.management.data.local.OrderWithLines
 import com.restaurant.management.data.local.entity.AppSettingsEntity
 import com.restaurant.management.data.local.entity.ExpenseEntity
 import com.restaurant.management.data.local.entity.InventoryEntity
 import com.restaurant.management.data.local.entity.MenuItemEntity
 import com.restaurant.management.data.local.entity.OrderEntity
 import com.restaurant.management.data.local.entity.OrderLineEntity
-import com.restaurant.management.data.local.entity.ReservationEntity
+import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
 import com.restaurant.management.data.local.entity.TableEntity
 import com.restaurant.management.model.KitchenLineStatus
 import com.restaurant.management.model.OrderStatus
 import com.restaurant.management.model.TableStatus
 import androidx.room.withTransaction
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+import kotlin.math.roundToInt
 import java.util.UUID
 import java.io.File
 import java.io.FileOutputStream
@@ -34,10 +38,10 @@ class RestaurantRepository(
     private val tables = db.tableDao()
     private val menu = db.menuDao()
     private val orders = db.orderDao()
-    private val reservations = db.reservationDao()
     private val inventory = db.inventoryDao()
     private val expenses = db.expenseDao()
     private val staff = db.staffDao()
+    private val staffAbsences = db.staffAbsenceDao()
     private val settings = db.settingsDao()
 
     fun observeTables(): Flow<List<TableEntity>> = tables.observeTables()
@@ -46,15 +50,24 @@ class RestaurantRepository(
 
     fun observeOpenOrders() = orders.observeOpenOrders()
 
-    fun observeReservations(): Flow<List<ReservationEntity>> = reservations.observeReservations()
-
     fun observeInventory(): Flow<List<InventoryEntity>> = inventory.observeInventory()
 
     fun observeExpenses(): Flow<List<ExpenseEntity>> = expenses.observeExpenses()
 
     fun observeStaff(): Flow<List<StaffEntity>> = staff.observeStaff()
 
+    fun observeStaffAbsencesByStaff(): Flow<Map<Long, List<StaffAbsenceEntity>>> =
+        staffAbsences.observeAll().map { rows ->
+            rows
+                .groupBy { it.staffId }
+                .mapValues { (_, list) ->
+                    list.sortedByDescending { it.dayStartEpochMillis }
+                }
+        }
+
     fun observeSettings(): Flow<AppSettingsEntity?> = settings.observeSettings()
+
+    suspend fun getSettingsOnce(): AppSettingsEntity? = settings.getOnce()
 
     suspend fun ensureQrMenuToken() {
         val cur = settings.getOnce() ?: return
@@ -261,6 +274,51 @@ class RestaurantRepository(
         }
     }
 
+    suspend fun updateMenuItem(
+        item: MenuItemEntity,
+        name: String,
+        category: String,
+        priceInInr: String,
+        photoUri: Uri?,
+        removeCustomPhoto: Boolean,
+    ) {
+        val cents = parseMoneyToPaise(priceInInr) ?: return
+        val trimmedName = name.trim()
+        if (trimmedName.isEmpty()) return
+
+        val newCustomPath: String? =
+            when {
+                photoUri != null -> persistMenuPhoto(photoUri, item.id) ?: item.customPhotoPath
+                removeCustomPhoto -> {
+                    item.customPhotoPath?.let { path ->
+                        withContext(Dispatchers.IO) {
+                            runCatching { File(path).delete() }
+                        }
+                    }
+                    null
+                }
+                else -> item.customPhotoPath
+            }
+
+        menu.update(
+            item.copy(
+                name = trimmedName,
+                category = category.trim().ifEmpty { "General" },
+                priceCents = cents,
+                customPhotoPath = newCustomPath,
+            ),
+        )
+    }
+
+    suspend fun deleteMenuItem(item: MenuItemEntity) {
+        item.customPhotoPath?.let { path ->
+            withContext(Dispatchers.IO) {
+                runCatching { File(path).delete() }
+            }
+        }
+        menu.delete(item)
+    }
+
     private suspend fun persistMenuPhoto(uri: Uri, menuItemId: Long): String? =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -279,6 +337,27 @@ class RestaurantRepository(
 
     suspend fun deleteInventory(item: InventoryEntity) {
         inventory.delete(item)
+    }
+
+    suspend fun addInventoryItem(
+        name: String,
+        quantity: String,
+        unit: String,
+        lowStockThreshold: String,
+    ) {
+        val trimmedName = name.trim()
+        if (trimmedName.isEmpty()) return
+        val q = quantity.toDoubleOrNull()?.coerceAtLeast(0.0) ?: return
+        val threshold = lowStockThreshold.toDoubleOrNull()?.coerceAtLeast(0.0) ?: return
+        val u = unit.trim().ifEmpty { "units" }
+        inventory.insert(
+            InventoryEntity(
+                name = trimmedName,
+                quantity = q,
+                unit = u,
+                lowStockThreshold = threshold,
+            ),
+        )
     }
 
     suspend fun addExpense(
@@ -306,28 +385,6 @@ class RestaurantRepository(
         expenses.delete(e)
     }
 
-    suspend fun addReservation(
-        guestName: String,
-        phone: String,
-        partySize: Int,
-        atEpochMillis: Long,
-        notes: String?,
-    ) {
-        reservations.insert(
-            ReservationEntity(
-                guestName = guestName.trim(),
-                phone = phone.trim(),
-                partySize = partySize.coerceAtLeast(1),
-                atEpochMillis = atEpochMillis,
-                notes = notes?.trim(),
-            ),
-        )
-    }
-
-    suspend fun deleteReservation(r: ReservationEntity) {
-        reservations.delete(r)
-    }
-
     suspend fun setStaffShift(
         member: StaffEntity,
         onShift: Boolean,
@@ -351,23 +408,87 @@ class RestaurantRepository(
         staff.update(member.copy(salaryCents = cents))
     }
 
+    suspend fun addStaff(
+        name: String,
+        role: String,
+    ) {
+        val n = name.trim()
+        if (n.isEmpty()) return
+        staff.insert(
+            StaffEntity(
+                name = n,
+                role = role.trim().ifEmpty { "Staff" },
+                onShift = false,
+                salaryCents = 0,
+            ),
+        )
+    }
+
+    suspend fun deleteStaff(member: StaffEntity) {
+        db.withTransaction {
+            staffAbsences.deleteAllForStaff(member.id)
+            staff.delete(member)
+        }
+    }
+
+    suspend fun addStaffAbsence(
+        staffId: Long,
+        daysAgoFromToday: Int,
+        note: String?,
+    ) {
+        val zone = ZoneId.systemDefault()
+        val day =
+            LocalDate.now(zone).minusDays(daysAgoFromToday.coerceAtLeast(0).toLong())
+        val start = day.atStartOfDay(zone).toInstant().toEpochMilli()
+        if (staffAbsences.countForDay(staffId, start) > 0) return
+        staffAbsences.insert(
+            StaffAbsenceEntity(
+                staffId = staffId,
+                dayStartEpochMillis = start,
+                note = note?.trim()?.takeIf { it.isNotEmpty() },
+            ),
+        )
+    }
+
+    suspend fun deleteStaffAbsence(row: StaffAbsenceEntity) {
+        staffAbsences.delete(row)
+    }
+
     suspend fun updateSettings(entity: AppSettingsEntity) {
         settings.upsert(entity)
     }
 
     suspend fun recentReports(limit: Int = 50): List<ReportRow> {
         val rows = orders.recentOrders(limit)
-        return rows.map { ow ->
-            ReportRow(
-                orderId = ow.order.id,
-                createdAt = ow.order.createdAtEpochMillis,
-                status = ow.order.status,
-                totalCents = ow.order.totalCents,
-                tableId = ow.order.tableId,
-                lineCount = ow.lines.size,
-            )
+        return buildList(rows.size) {
+            for (ow in rows) add(reportRowFromOrderWithLines(ow))
         }
     }
+
+    private suspend fun reportRowFromOrderWithLines(ow: OrderWithLines): ReportRow {
+        val previews = linePreviewsForOrder(ow)
+        return ReportRow(
+            orderId = ow.order.id,
+            createdAt = ow.order.createdAtEpochMillis,
+            status = ow.order.status,
+            totalCents = ow.order.totalCents,
+            tableId = ow.order.tableId,
+            lineCount = ow.lines.size,
+            linePreviews = previews,
+        )
+    }
+
+    private suspend fun linePreviewsForOrder(ow: OrderWithLines): List<ReportLinePreview> =
+        ow.lines.map { line ->
+            val item = menu.getById(line.menuItemId)
+            ReportLinePreview(
+                menuItemId = line.menuItemId,
+                itemName = item?.name ?: "Menu item #${line.menuItemId}",
+                category = item?.category ?: "",
+                customPhotoPath = item?.customPhotoPath,
+                quantity = line.quantity,
+            )
+        }
 
     /** Half-open range: [fromMillis, toMillisExclusive). */
     suspend fun reportsForDateRange(
@@ -375,28 +496,37 @@ class RestaurantRepository(
         toMillisExclusive: Long,
     ): ReportBundle {
         val list = orders.ordersBetween(fromMillis, toMillisExclusive)
-        val rows =
-            list.map { ow ->
-                ReportRow(
-                    orderId = ow.order.id,
-                    createdAt = ow.order.createdAtEpochMillis,
-                    status = ow.order.status,
-                    totalCents = ow.order.totalCents,
-                    tableId = ow.order.tableId,
-                    lineCount = ow.lines.size,
-                )
-            }
+        val rows = buildList(list.size) {
+            for (ow in list) add(reportRowFromOrderWithLines(ow))
+        }
         val paidRev =
             orders.sumPaidRevenueBetween(fromMillis, toMillisExclusive)
         val paidCnt =
             orders.countPaidOrdersBetween(fromMillis, toMillisExclusive)
         val totalCnt =
             orders.countOrdersBetween(fromMillis, toMillisExclusive)
+        val expenseTotal =
+            expenses.sumBetween(fromMillis, toMillisExclusive)
+        val monthlyStaffSalaries = staff.sumMonthlySalaries()
+        val zone = ZoneId.systemDefault()
+        val periodDays = inclusionDayCount(fromMillis, toMillisExclusive, zone)
+        val allocatedSalaryCost =
+            if (monthlyStaffSalaries <= 0 || periodDays <= 0) {
+                0
+            } else {
+                (monthlyStaffSalaries * periodDays / 30.0).roundToInt()
+            }
+        val netProfit = paidRev - expenseTotal - allocatedSalaryCost
         return ReportBundle(
             rows = rows,
             paidRevenueCents = paidRev,
             paidOrderCount = paidCnt,
             totalOrderCount = totalCnt,
+            expenseTotalCents = expenseTotal,
+            monthlyStaffSalariesCents = monthlyStaffSalaries,
+            periodDays = periodDays,
+            allocatedSalaryCostCents = allocatedSalaryCost,
+            netProfitCents = netProfit,
         )
     }
 
@@ -405,7 +535,24 @@ class RestaurantRepository(
         val paidRevenueCents: Int,
         val paidOrderCount: Int,
         val totalOrderCount: Int,
+        val expenseTotalCents: Int,
+        val monthlyStaffSalariesCents: Int,
+        val periodDays: Long,
+        val allocatedSalaryCostCents: Int,
+        val netProfitCents: Int,
     )
+
+    private fun inclusionDayCount(
+        fromMillis: Long,
+        toMillisExclusive: Long,
+        zone: ZoneId,
+    ): Long {
+        if (toMillisExclusive <= fromMillis) return 1L
+        val start = Instant.ofEpochMilli(fromMillis).atZone(zone).toLocalDate()
+        val endInclusive =
+            Instant.ofEpochMilli(toMillisExclusive - 1L).atZone(zone).toLocalDate()
+        return ChronoUnit.DAYS.between(start, endInclusive) + 1L
+    }
 
     fun taxMultiplierFlow(): Flow<Double> =
         settings.observeSettings().map { s ->
@@ -426,6 +573,14 @@ class RestaurantRepository(
         val activeOrders: Int,
     )
 
+    data class ReportLinePreview(
+        val menuItemId: Long,
+        val itemName: String,
+        val category: String,
+        val customPhotoPath: String?,
+        val quantity: Int,
+    )
+
     data class ReportRow(
         val orderId: Long,
         val createdAt: Long,
@@ -433,5 +588,61 @@ class RestaurantRepository(
         val totalCents: Int,
         val tableId: Long?,
         val lineCount: Int,
+        val linePreviews: List<ReportLinePreview> = emptyList(),
     )
+
+    data class ReportLineDetail(
+        val menuItemId: Long,
+        val itemName: String,
+        val category: String,
+        val customPhotoPath: String?,
+        val quantity: Int,
+        val unitPriceCents: Int,
+        val lineTotalCents: Int,
+    ) {
+        fun toLinePreview(): ReportLinePreview =
+            ReportLinePreview(
+                menuItemId = menuItemId,
+                itemName = itemName,
+                category = category,
+                customPhotoPath = customPhotoPath,
+                quantity = quantity,
+            )
+    }
+
+    data class ReportOrderDetail(
+        val orderId: Long,
+        val createdAt: Long,
+        val status: String,
+        val totalCents: Int,
+        val tableId: Long?,
+        val lines: List<ReportLineDetail>,
+    )
+
+    suspend fun getReportOrderDetail(orderId: Long): ReportOrderDetail? {
+        val ow = orders.getOrderWithLines(orderId) ?: return null
+        val lines =
+            ow.lines.map { line ->
+                val item = menu.getById(line.menuItemId)
+                val name = item?.name ?: "Menu item #${line.menuItemId}"
+                val lineTotal = line.quantity * line.unitPriceCents
+                ReportLineDetail(
+                    menuItemId = line.menuItemId,
+                    itemName = name,
+                    category = item?.category ?: "",
+                    customPhotoPath = item?.customPhotoPath,
+                    quantity = line.quantity,
+                    unitPriceCents = line.unitPriceCents,
+                    lineTotalCents = lineTotal,
+                )
+            }
+        return ReportOrderDetail(
+            orderId = ow.order.id,
+            createdAt = ow.order.createdAtEpochMillis,
+            status = ow.order.status,
+            totalCents = ow.order.totalCents,
+            tableId = ow.order.tableId,
+            lines = lines,
+        )
+    }
 }

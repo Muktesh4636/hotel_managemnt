@@ -4,7 +4,8 @@ import androidx.annotation.DrawableRes
 import com.restaurant.management.R
 
 /**
- * Bundled JPG photos (Unsplash + Wikimedia Commons). Matches user-visible names so e.g. “Tea” → tea photo.
+ * Bundled JPG photos (stock + Wikimedia Commons where noted).
+ * Indian dishes use dedicated drawables (`food_indian_*`) so thumbnails match cuisine.
  */
 private fun words(name: String): Set<String> =
     Regex("\\w+").findAll(name.lowercase()).map { it.value }.toSet()
@@ -15,16 +16,194 @@ fun foodPhotoForMenuItem(name: String, category: String): Int {
     val w = words(name)
 
     return when {
+        // --- Indian cuisine (match before generic Western overlaps) ---
+        lower.contains("masala dosa") ||
+            lower.contains("rava dosa") ||
+            lower.contains("onion dosa") ||
+            lower.contains("uttapam") ||
+            lower.contains("uthappam") ||
+            lower.contains("pesarattu") ||
+            lower.contains("dosa") -> R.drawable.food_indian_dosa
+
+        lower.contains("idli") ||
+            lower.contains("idiyappam") ||
+            lower.contains("medu vada") ||
+            (lower.contains("vada") && !lower.contains("vada pav")) -> R.drawable.food_indian_idli
+
+        lower.contains("vada pav") ||
+            lower.contains("vadapav") ||
+            lower.contains("pav bhaji") ||
+            lower.contains("pavbhaji") ||
+            lower.contains("misal") ||
+            lower.contains("misal pav") -> R.drawable.food_indian_gravy
+
+        lower.contains("naan") ||
+            lower.contains("garlic naan") ||
+            lower.contains("butter naan") ||
+            lower.contains("kulcha") ||
+            lower.contains("roti") ||
+            lower.contains("chapati") ||
+            lower.contains("phulka") ||
+            lower.contains("paratha") ||
+            lower.contains("parantha") ||
+            lower.contains("aloo paratha") ||
+            lower.contains("bhatura") ||
+            lower.contains("bhature") ||
+            lower.contains("puri") ||
+            lower.contains("poori") ||
+            lower.contains("thepla") ||
+            lower.contains("missi roti") -> R.drawable.food_indian_flatbread
+
+        lower.contains("haleem") -> R.drawable.food_indian_gravy
+
+        lower.contains("biryani") ||
+            lower.contains("biriyani") ||
+            lower.contains("hyderabadi") ||
+            lower.contains("lucknowi") ||
+            lower.contains("ambur") ||
+            lower.contains("donne") -> R.drawable.food_indian_biryani
+
+        lower.contains("pulao") ||
+            lower.contains("pulav") ||
+            lower.contains("pilaf") ||
+            lower.contains("pilau") ||
+            lower.contains("jeera rice") ||
+            lower.contains("lemon rice") ||
+            lower.contains("curd rice") ||
+            lower.contains("tamarind rice") ||
+            lower.contains("tomato rice") -> R.drawable.food_indian_rice
+
+        lower.contains("paneer") ||
+            lower.contains("palak paneer") ||
+            lower.contains("kadai paneer") ||
+            lower.contains("paneer tikka") ||
+            lower.contains("malai paneer") ||
+            lower.contains("shahi paneer") ||
+            lower.contains("matar paneer") -> R.drawable.food_indian_paneer
+
+        lower.contains("dal ") ||
+            lower.contains("dal.") ||
+            lower.startsWith("dal ") ||
+            lower.contains("daal") ||
+            lower.contains("dhal") ||
+            lower.contains("sambar") ||
+            lower.contains("sambhar") ||
+            lower.contains("rasam") ||
+            lower.contains("dal makhani") ||
+            lower.contains("dal tadka") ||
+            lower.contains("dal fry") -> R.drawable.food_indian_dal
+
+        lower.contains("chole") ||
+            lower.contains("chhole") ||
+            lower.contains("chana masala") ||
+            lower.contains("channa masala") ||
+            lower.contains("rajma") ||
+            lower.contains("kadhi") ||
+            lower.contains("undhiyu") ||
+            lower.contains("baingan") ||
+            lower.contains("bhindi") ||
+            lower.contains("aloo gobi") ||
+            lower.contains("aloo matar") ||
+            lower.contains("mixed veg") ||
+            lower.contains("vegetable curry") -> R.drawable.food_indian_gravy
+
+        lower.contains("butter chicken") ||
+            lower.contains("chicken tikka masala") ||
+            lower.contains("tikka masala") ||
+            lower.contains("chicken curry") ||
+            lower.contains("mutton curry") ||
+            lower.contains("lamb curry") ||
+            lower.contains("fish curry") ||
+            lower.contains("prawn curry") ||
+            lower.contains("egg curry") ||
+            lower.contains("chettinad") ||
+            lower.contains("vindaloo") ||
+            lower.contains("rogan josh") ||
+            lower.contains("korma") ||
+            lower.contains("handi") ||
+            lower.contains("jalfrezi") ||
+            lower.contains("do pyaza") ||
+            lower.contains("saag") ||
+            lower.contains("malai kofta") ||
+            lower.contains("kofta") -> R.drawable.food_indian_gravy
+
+        lower.contains("tandoori") ||
+            (lower.contains("tikka") && (lower.contains("chicken") || lower.contains("paneer"))) ||
+            lower.contains("seekh kebab") ||
+            lower.contains("seekh kabab") ||
+            lower.contains("shami kebab") ||
+            lower.contains("reshmi kebab") ||
+            lower.contains("galouti") ||
+            lower.contains("kebab") && (lower.contains("indian") || lower.contains("lucknow")) -> R.drawable.food_indian_tandoori
+
+        lower.contains("samosa") ||
+            lower.contains("pakora") ||
+            lower.contains("pakoda") ||
+            lower.contains("bhaji") ||
+            lower.contains("bajji") ||
+            lower.contains("kachori") ||
+            lower.contains("kachauri") ||
+            lower.contains("mirchi bajji") ||
+            lower.contains("bhajiya") -> R.drawable.food_indian_snack_fried
+
+        lower.contains("chaat") ||
+            lower.contains("bhel") ||
+            lower.contains("sev puri") ||
+            lower.contains("pani puri") ||
+            lower.contains("gol gappa") ||
+            lower.contains("puchka") ||
+            lower.contains("dahi puri") ||
+            lower.contains("papdi chaat") ||
+            lower.contains("aloo tikki") -> R.drawable.food_indian_snack_fried
+
+        lower.contains("jalebi") ||
+            lower.contains("jalebee") ||
+            lower.contains("gulab jamun") ||
+            lower.contains("gulabjamun") ||
+            lower.contains("rasgulla") ||
+            lower.contains("ras malai") ||
+            lower.contains("rasmalai") ||
+            lower.contains("ladoo") ||
+            lower.contains("laddu") ||
+            lower.contains("barfi") ||
+            lower.contains("burfi") ||
+            lower.contains("halwa") ||
+            lower.contains("halva") ||
+            lower.contains("sheera") ||
+            lower.contains("shrikhand") ||
+            lower.contains("payasam") ||
+            lower.contains("kheer") ||
+            lower.contains("phirni") ||
+            lower.contains("kulfi") ||
+            lower.contains("mithai") ||
+            lower.contains("soan papdi") -> R.drawable.food_indian_sweet
+
+        lower.contains("lassi") ||
+            lower.contains("chaas") ||
+            lower.contains("chaach") ||
+            lower.contains("buttermilk") && lower.contains("masala") -> R.drawable.food_indian_lassi
+
+        lower.contains("masala chai") ||
+            lower.contains("masala tea") ||
+            (lower.contains("chai") && !lower.contains("latte")) ||
+            lower.contains("cutting chai") ||
+            lower.contains("adrak chai") ||
+            lower.contains("ginger chai") -> R.drawable.food_indian_chai
+
+        lower.contains("curry") ||
+            lower.contains("biryani") ||
+            lower.contains("tikka") ||
+            lower.contains("masala") ||
+            lower.contains("korma") -> R.drawable.food_indian_curry
+
         lower.contains("ice cream") || lower.contains("gelato") || w.contains("sundae") -> R.drawable.food_ice_cream
 
         lower.contains("green tea") ||
             lower.contains("black tea") ||
             lower.contains("iced tea") ||
-            lower.contains("masala chai") ||
-            lower.contains("chai") ||
             lower.contains("bubble tea") ||
             lower.contains("matcha") ||
-            w.contains("tea") -> R.drawable.food_tea
+            (w.contains("tea") && !lower.contains("chai")) -> R.drawable.food_tea
 
         lower.contains("espresso") ||
             lower.contains("latte") ||
@@ -58,12 +237,6 @@ fun foodPhotoForMenuItem(name: String, category: String): Int {
             lower.contains("penne") ||
             lower.contains("risotto") ||
             w.contains("pasta") -> R.drawable.food_pasta
-
-        lower.contains("curry") ||
-            lower.contains("biryani") ||
-            lower.contains("tikka") ||
-            lower.contains("masala") ||
-            lower.contains("korma") -> R.drawable.food_curry
 
         lower.contains("cheesecake") ||
             lower.contains("brownie") ||
@@ -124,6 +297,13 @@ fun foodPhotoForInventoryItem(name: String): Int {
     val lower = name.lowercase()
     val w = words(name)
     return when {
+        w.contains("paneer") -> R.drawable.food_indian_paneer
+        w.contains("besan") || w.contains("atta") || w.contains("maida") -> R.drawable.food_indian_flatbread
+        w.contains("rice") || w.contains("basmati") -> R.drawable.food_indian_rice
+        w.contains("dal") || w.contains("daal") || w.contains("toor") || w.contains("moong") || w.contains("masoor") ->
+            R.drawable.food_indian_dal
+        w.contains("mirchi") || w.contains("chilli") || w.contains("chili") -> R.drawable.food_tomato
+        w.contains("ghee") -> R.drawable.food_olive_oil
         w.contains("tomato") || w.contains("tomatoes") -> R.drawable.food_tomato
         w.contains("chicken") -> R.drawable.food_chicken_raw
         lower.contains("olive") -> R.drawable.food_olive_oil

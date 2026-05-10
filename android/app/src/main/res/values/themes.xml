@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.RestaurantManagement" parent="Theme.Material3.Light.NoActionBar">
+    <!-- Base theme (API 26+). Navigation-bar light icons added in values-v27. -->
+    <style name="Theme.RestaurantManagement.Base" parent="Theme.Material3.Light.NoActionBar">
         <item name="android:windowBackground">@color/app_background</item>
         <item name="android:colorBackground">@color/app_background</item>
         <item name="android:statusBarColor">@color/app_background</item>
         <item name="android:navigationBarColor">@color/app_background</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
     </style>
+    <style name="Theme.RestaurantManagement" parent="Theme.RestaurantManagement.Base" />
 </resources>

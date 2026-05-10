@@ -12,6 +12,7 @@ import com.restaurant.management.data.local.dao.MenuDao
 import com.restaurant.management.data.local.dao.OrderDao
 import com.restaurant.management.data.local.dao.ReservationDao
 import com.restaurant.management.data.local.dao.SettingsDao
+import com.restaurant.management.data.local.dao.StaffAbsenceDao
 import com.restaurant.management.data.local.dao.StaffDao
 import com.restaurant.management.data.local.dao.TableDao
 import com.restaurant.management.data.local.entity.AppSettingsEntity
@@ -21,6 +22,7 @@ import com.restaurant.management.data.local.entity.MenuItemEntity
 import com.restaurant.management.data.local.entity.OrderEntity
 import com.restaurant.management.data.local.entity.OrderLineEntity
 import com.restaurant.management.data.local.entity.ReservationEntity
+import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
 import com.restaurant.management.data.local.entity.TableEntity
 
@@ -33,10 +35,11 @@ import com.restaurant.management.data.local.entity.TableEntity
         ReservationEntity::class,
         InventoryEntity::class,
         StaffEntity::class,
+        StaffAbsenceEntity::class,
         AppSettingsEntity::class,
         ExpenseEntity::class,
     ],
-    version = 6,
+    version = 8,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -53,6 +56,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
 
     abstract fun staffDao(): StaffDao
+
+    abstract fun staffAbsenceDao(): StaffAbsenceDao
 
     abstract fun settingsDao(): SettingsDao
 
@@ -114,6 +119,63 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        private val MIGRATION_6_7 =
+            object : Migration(6, 7) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS staff_absences (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                            staffId INTEGER NOT NULL,
+                            dayStartEpochMillis INTEGER NOT NULL,
+                            note TEXT
+                        )
+                        """.trimIndent(),
+                    )
+                    db.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS index_staff_absences_staffId_dayStartEpochMillis " +
+                            "ON staff_absences (staffId, dayStartEpochMillis)",
+                    )
+                }
+            }
+
+        /**
+         * Earlier 6→7 used inline UNIQUE(...) only — Room expects a named unique index matching
+         * [StaffAbsenceEntity]. Fix broken DBs; if the index already exists (fixed 6→7), no-op.
+         */
+        private val MIGRATION_7_8 =
+            object : Migration(7, 8) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    val cursor =
+                        db.query(
+                            "SELECT 1 FROM sqlite_master WHERE type='index' " +
+                                "AND name='index_staff_absences_staffId_dayStartEpochMillis'",
+                        )
+                    val hasRoomIndex =
+                        try {
+                            cursor.moveToFirst()
+                        } finally {
+                            cursor.close()
+                        }
+                    if (hasRoomIndex) return
+                    db.execSQL("DROP TABLE IF EXISTS staff_absences")
+                    db.execSQL(
+                        """
+                        CREATE TABLE staff_absences (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                            staffId INTEGER NOT NULL,
+                            dayStartEpochMillis INTEGER NOT NULL,
+                            note TEXT
+                        )
+                        """.trimIndent(),
+                    )
+                    db.execSQL(
+                        "CREATE UNIQUE INDEX index_staff_absences_staffId_dayStartEpochMillis " +
+                            "ON staff_absences (staffId, dayStartEpochMillis)",
+                    )
+                }
+            }
+
         fun getInstance(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -126,6 +188,8 @@ abstract class AppDatabase : RoomDatabase() {
                     MIGRATION_3_4,
                     MIGRATION_4_5,
                     MIGRATION_5_6,
+                    MIGRATION_6_7,
+                    MIGRATION_7_8,
                 )
                     .build()
                     .also { instance = it }

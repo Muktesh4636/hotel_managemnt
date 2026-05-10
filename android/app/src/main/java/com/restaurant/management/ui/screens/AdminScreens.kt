@@ -1,12 +1,16 @@
 package com.restaurant.management.ui.screens
 
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,19 +23,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,14 +61,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.restaurant.management.data.local.entity.AppSettingsEntity
+import com.restaurant.management.data.local.entity.MenuItemEntity
 import com.restaurant.management.data.local.entity.InventoryEntity
-import com.restaurant.management.data.local.entity.ReservationEntity
+import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
+import com.restaurant.management.data.RestaurantRepository
 import com.restaurant.management.R
 import com.restaurant.management.ui.Destinations
 import com.restaurant.management.ui.RestaurantViewModel
@@ -65,6 +84,7 @@ import com.restaurant.management.ui.theme.ScreenHeader
 import com.restaurant.management.ui.visual.HubModuleBadge
 import com.restaurant.management.ui.visual.InventoryItemBadge
 import com.restaurant.management.ui.visual.MenuItemImageBadge
+import com.restaurant.management.ui.visual.ReportCarouselPhotoTile
 import com.restaurant.management.ui.util.formatCents
 import com.restaurant.management.ui.util.hubRouteEnabled
 import com.restaurant.management.ui.util.modulesToJson
@@ -81,16 +101,25 @@ import java.util.Date
 import java.util.Locale
 
 object AdminScreens {
+    private fun paiseToEditableInr(paise: Int): String {
+        val rupees = paise / 100.0
+        return if (kotlin.math.abs(rupees - rupees.toInt()) < 1e-9) {
+            rupees.toInt().toString()
+        } else {
+            String.format(Locale.US, "%.2f", rupees)
+        }
+    }
+
     private val hubEntriesAll =
         listOf(
             Triple("Menu & item availability", "Edit categories, prices, 86 items", Destinations.MENU_ADMIN),
             Triple("Customer QR menu", "QR code — guests order from phone to kitchen", Destinations.QR_MENU),
             Triple("Inventory & stock", "Track ingredients and low-stock alerts", Destinations.INVENTORY),
             Triple("Expenses", "Track operating costs and running total", Destinations.EXPENSES),
-            Triple("Reservations", "Guest bookings and party size", Destinations.RESERVATIONS),
-            Triple("Staff & shifts", "Salaries, roles, and on-shift toggles", Destinations.STAFF),
-            Triple("Reports & orders", "Recent tickets and revenue audit", Destinations.REPORTS),
-            Triple("Global settings", "Categories, modules, tax & venue name", Destinations.SETTINGS),
+            Triple("Staff", "Salaries, absent days & roster", Destinations.STAFF),
+            Triple("Reports", "Revenue, expenses, salaries & net profit", Destinations.REPORTS),
+            Triple("Order history", "Recent tickets — tap for line items", Destinations.ORDERS),
+            Triple("Global settings", "Menu categories, modules, tax & venue name", Destinations.SETTINGS),
         )
 
     @Composable
@@ -112,12 +141,16 @@ object AdminScreens {
         ) {
             ScreenHeader(
                 title = "Operations",
-                subtitle = "Back-office modules",
+                subtitle = "Back-office modules — scroll for more",
                 accent = HeaderAccent.Primary,
                 decorationResId = R.drawable.decor_chef_hat,
             )
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
@@ -172,16 +205,70 @@ object AdminScreens {
         var category by remember(menuCats) { mutableStateOf(menuCats.firstOrNull() ?: "General") }
         var price by remember { mutableStateOf("") }
         var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
-        val pickPhoto =
+        var showAddForm by remember { mutableStateOf(false) }
+        /** `null` = show all categories */
+        var selectedListCategory by remember { mutableStateOf<String?>(null) }
+        var actionMenuItem by remember { mutableStateOf<MenuItemEntity?>(null) }
+        var deleteConfirmItem by remember { mutableStateOf<MenuItemEntity?>(null) }
+        var editingItem by remember { mutableStateOf<MenuItemEntity?>(null) }
+        var editName by remember { mutableStateOf("") }
+        var editCategory by remember { mutableStateOf("") }
+        var editPrice by remember { mutableStateOf("") }
+        var editPhotoUri by remember { mutableStateOf<Uri?>(null) }
+        var editRemovePhoto by remember { mutableStateOf(false) }
+        var editCategoryExpanded by remember { mutableStateOf(false) }
+        val pickAddPhoto =
             rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
                 pendingPhotoUri = uri
             }
+        val pickEditPhoto =
+            rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+                if (uri != null) {
+                    editPhotoUri = uri
+                    editRemovePhoto = false
+                }
+            }
+
+        LaunchedEffect(editingItem) {
+            val it = editingItem
+            if (it != null) {
+                editName = it.name
+                editCategory = it.category
+                editPrice = paiseToEditableInr(it.priceCents)
+                editPhotoUri = null
+                editRemovePhoto = false
+                editCategoryExpanded = false
+            }
+        }
 
         LaunchedEffect(menuCats) {
             if (category !in menuCats) {
                 category = menuCats.firstOrNull() ?: "General"
             }
+            if (selectedListCategory != null && selectedListCategory !in menuCats) {
+                selectedListCategory = null
+            }
         }
+
+        val filteredMenu =
+            remember(menu, selectedListCategory) {
+                val sel = selectedListCategory
+                if (sel.isNullOrBlank()) {
+                    menu
+                } else {
+                    menu.filter { it.category == sel }
+                }
+            }
+
+        val editCategoryOptions =
+            remember(menuCats, editingItem) {
+                val list = menuCats.toMutableList()
+                editingItem?.category?.let { c ->
+                    if (c !in list) list.add(c)
+                }
+                if (list.isEmpty()) list.add("General")
+                list
+            }
 
         Column(
             modifier =
@@ -194,6 +281,22 @@ object AdminScreens {
                 subtitle = "Items & availability",
                 accent = HeaderAccent.Secondary,
                 decorationResId = R.drawable.decor_plate_meal,
+                actions = {
+                    IconButton(
+                        onClick = { showAddForm = !showAddForm },
+                    ) {
+                        Icon(
+                            imageVector = if (showAddForm) Icons.Default.Close else Icons.Default.Add,
+                            contentDescription =
+                                if (showAddForm) {
+                                    "Close add item form"
+                                } else {
+                                    "Add new menu item"
+                                },
+                            tint = MaterialTheme.colorScheme.onSecondary,
+                        )
+                    }
+                },
             )
             Column(
                 modifier =
@@ -201,115 +304,379 @@ object AdminScreens {
                         .padding(16.dp)
                         .fillMaxSize(),
             ) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("New item name") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                "Category",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-            )
-            Text(
-                "Set categories under Global settings. Tap a chip to choose.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                items(menuCats, key = { it }) { cat ->
-                    FilterChip(
-                        selected = category == cat,
-                        onClick = { category = cat },
-                        label = { Text(cat) },
-                    )
-                }
-            }
-            OutlinedTextField(
-                value = price,
-                onValueChange = { price = it },
-                label = { Text("Price in ₹ (e.g. 299 or 149.50)") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Row(
-                modifier = Modifier.padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        pickPhoto.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+            actionMenuItem?.let { item ->
+                AlertDialog(
+                    onDismissRequest = { actionMenuItem = null },
+                    title = { Text(item.name) },
+                    text = {
+                        Text(
+                            "Long-press actions",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                ) {
-                    Text(if (pendingPhotoUri != null) "Change photo" else "Add photo (optional)")
-                }
-                if (pendingPhotoUri != null) {
-                    TextButton(onClick = { pendingPhotoUri = null }) {
-                        Text("Remove photo")
-                    }
-                }
-            }
-            if (pendingPhotoUri != null) {
-                Text(
-                    "A photo is selected — it will appear on menu lists after you add the item.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp),
+                    confirmButton = {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(
+                                onClick = {
+                                    editingItem = item
+                                    actionMenuItem = null
+                                },
+                            ) {
+                                Text("Edit item")
+                            }
+                            TextButton(
+                                onClick = {
+                                    deleteConfirmItem = item
+                                    actionMenuItem = null
+                                },
+                            ) {
+                                Text("Delete item")
+                            }
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { actionMenuItem = null }) {
+                            Text("Cancel")
+                        }
+                    },
                 )
             }
-            Button(
-                onClick = {
-                    vm.addMenuItem(name, category, price, pendingPhotoUri)
-                    name = ""
-                    price = ""
-                    pendingPhotoUri = null
-                },
-                enabled = name.isNotBlank(),
-                modifier = Modifier.padding(vertical = 8.dp),
-            ) {
-                Text("Add menu item")
+
+            deleteConfirmItem?.let { item ->
+                AlertDialog(
+                    onDismissRequest = { deleteConfirmItem = null },
+                    title = { Text("Delete this item?") },
+                    text = {
+                        Text(
+                            "It will be removed from the menu. Past tickets may still show a generic label for this dish.",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                vm.deleteMenuItem(item)
+                                deleteConfirmItem = null
+                                if (editingItem?.id == item.id) editingItem = null
+                            },
+                        ) {
+                            Text("Delete")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { deleteConfirmItem = null }) {
+                            Text("Cancel")
+                        }
+                    },
+                )
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            editingItem?.let { item ->
+                AlertDialog(
+                    onDismissRequest = { editingItem = null },
+                    title = { Text("Edit menu item") },
+                    text = {
+                        Column(
+                            Modifier
+                                .verticalScroll(rememberScrollState())
+                                .heightIn(max = 520.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            OutlinedTextField(
+                                value = editName,
+                                onValueChange = { editName = it },
+                                label = { Text("Item name") },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable { editCategoryExpanded = true },
+                                    readOnly = true,
+                                    value = editCategory,
+                                    onValueChange = {},
+                                    label = { Text("Category") },
+                                    trailingIcon = {
+                                        Icon(
+                                            Icons.Default.ArrowDropDown,
+                                            contentDescription = null,
+                                        )
+                                    },
+                                )
+                                DropdownMenu(
+                                    expanded = editCategoryExpanded,
+                                    onDismissRequest = { editCategoryExpanded = false },
+                                ) {
+                                    editCategoryOptions.forEach { option ->
+                                        DropdownMenuItem(
+                                            text = { Text(option) },
+                                            onClick = {
+                                                editCategory = option
+                                                editCategoryExpanded = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                            OutlinedTextField(
+                                value = editPrice,
+                                onValueChange = { editPrice = it },
+                                label = { Text("Price in ₹ (e.g. 299 or 149.50)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        pickEditPhoto.launch(
+                                            PickVisualMediaRequest(
+                                                ActivityResultContracts.PickVisualMedia.ImageOnly,
+                                            ),
+                                        )
+                                    },
+                                ) {
+                                    Text(
+                                        if (editPhotoUri != null) {
+                                            "Change photo"
+                                        } else {
+                                            "Choose photo (optional)"
+                                        },
+                                    )
+                                }
+                                val showRemovePhoto =
+                                    editPhotoUri != null ||
+                                        (item.customPhotoPath != null && !editRemovePhoto)
+                                if (showRemovePhoto) {
+                                    TextButton(
+                                        onClick = {
+                                            val hadPendingNew = editPhotoUri != null
+                                            editPhotoUri = null
+                                            editRemovePhoto = item.customPhotoPath != null || hadPendingNew
+                                        },
+                                    ) {
+                                        Text("Remove photo")
+                                    }
+                                }
+                            }
+                            Text(
+                                when {
+                                    editPhotoUri != null ->
+                                        "New photo will be saved when you tap Save."
+                                    editRemovePhoto ->
+                                        "Photo will be cleared; the default image will be used."
+                                    item.customPhotoPath != null ->
+                                        "This item has a custom photo."
+                                    else ->
+                                        "Optional — uses the category default image."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                vm.updateMenuItem(
+                                    item,
+                                    editName,
+                                    editCategory,
+                                    editPrice,
+                                    editPhotoUri,
+                                    editRemovePhoto,
+                                )
+                                editingItem = null
+                            },
+                            enabled = editName.isNotBlank(),
+                        ) {
+                            Text("Save")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { editingItem = null }) {
+                            Text("Cancel")
+                        }
+                    },
+                )
+            }
+
+            if (showAddForm) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("New item name") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "Category",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                )
+                Text(
+                    "Set categories under Global settings. Tap a chip to choose.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    items(menuCats, key = { it }) { cat ->
+                        FilterChip(
+                            selected = category == cat,
+                            onClick = { category = cat },
+                            label = { Text(cat) },
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = price,
+                    onValueChange = { price = it },
+                    label = { Text("Price in ₹ (e.g. 299 or 149.50)") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            pickAddPhoto.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                            )
+                        },
+                    ) {
+                        Text(if (pendingPhotoUri != null) "Change photo" else "Add photo (optional)")
+                    }
+                    if (pendingPhotoUri != null) {
+                        TextButton(onClick = { pendingPhotoUri = null }) {
+                            Text("Remove photo")
+                        }
+                    }
+                }
+                if (pendingPhotoUri != null) {
+                    Text(
+                        "A photo is selected — it will appear on menu lists after you add the item.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
+                Button(
+                    onClick = {
+                        vm.addMenuItem(name, category, price, pendingPhotoUri)
+                        name = ""
+                        price = ""
+                        pendingPhotoUri = null
+                        showAddForm = false
+                    },
+                    enabled = name.isNotBlank(),
+                    modifier = Modifier.padding(vertical = 8.dp),
+                ) {
+                    Text("Add menu item")
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
             Text(
                 "Items — toggle 86 / availability",
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
+            Text(
+                "Category",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp),
+            ) {
+                item(key = "_all") {
+                    FilterChip(
+                        selected = selectedListCategory == null,
+                        onClick = { selectedListCategory = null },
+                        label = { Text("All") },
+                    )
+                }
+                items(menuCats, key = { it }) { cat ->
+                    FilterChip(
+                        selected = selectedListCategory == cat,
+                        onClick = {
+                            selectedListCategory = if (selectedListCategory == cat) null else cat
+                        },
+                        label = { Text(cat) },
+                    )
+                }
+            }
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(menu, key = { it.id }) { item ->
+                if (filteredMenu.isEmpty()) {
+                    item(key = "empty_filter") {
+                        Text(
+                            text =
+                                if (menu.isEmpty()) {
+                                    "No menu items yet — tap + to add one."
+                                } else {
+                                    "No items in this category."
+                                },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 12.dp),
+                        )
+                    }
+                }
+                items(filteredMenu, key = { it.id }) { item ->
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        MenuItemImageBadge(
-                            itemName = item.name,
-                            category = item.category,
-                            itemId = item.id,
-                            customPhotoPath = item.customPhotoPath,
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(item.name, fontWeight = FontWeight.Medium)
-                            Text(
-                                "${item.category} · ${formatCents(item.priceCents)}",
-                                style = MaterialTheme.typography.bodySmall,
+                        Row(
+                            Modifier
+                                .weight(1f)
+                                .pointerInput(item.id) {
+                                    detectTapGestures(
+                                        onLongPress = { actionMenuItem = item },
+                                    )
+                                },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            MenuItemImageBadge(
+                                itemName = item.name,
+                                category = item.category,
+                                itemId = item.id,
+                                customPhotoPath = item.customPhotoPath,
                             )
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(item.name, fontWeight = FontWeight.Medium)
+                                Text(
+                                    "${item.category} · ${formatCents(item.priceCents)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
                         }
-                        Row {
-                            Text(if (item.isAvailable) "Available" else "86'd", modifier = Modifier.padding(end = 8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (item.isAvailable) "Available" else "86'd",
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
                             Switch(
                                 checked = item.isAvailable,
                                 onCheckedChange = { vm.setMenuAvailability(item, it) },
@@ -325,6 +692,12 @@ object AdminScreens {
     @Composable
     fun Inventory(vm: RestaurantViewModel) {
         val items by vm.inventory.collectAsState()
+        var showAddForm by remember { mutableStateOf(false) }
+        var newName by remember { mutableStateOf("") }
+        var newQty by remember { mutableStateOf("") }
+        var newUnit by remember { mutableStateOf("kg") }
+        var newLow by remember { mutableStateOf("") }
+
         Column(
             modifier =
                 Modifier
@@ -336,16 +709,92 @@ object AdminScreens {
                 subtitle = "Stock levels",
                 accent = HeaderAccent.Primary,
                 decorationResId = R.drawable.decor_kitchen_pot,
+                actions = {
+                    IconButton(
+                        onClick = { showAddForm = !showAddForm },
+                    ) {
+                        Icon(
+                            imageVector = if (showAddForm) Icons.Default.Close else Icons.Default.Add,
+                            contentDescription =
+                                if (showAddForm) {
+                                    "Close add stock form"
+                                } else {
+                                    "Add inventory stock"
+                                },
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                },
             )
-            LazyColumn(
+            Column(
                 modifier =
                     Modifier
                         .weight(1f)
+                        .fillMaxWidth()
                         .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(items, key = { it.id }) { inv ->
-                    InventoryRow(inv, vm)
+                if (showAddForm) {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("Item name") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = newQty,
+                        onValueChange = { newQty = it },
+                        label = { Text("Quantity on hand") },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    )
+                    OutlinedTextField(
+                        value = newUnit,
+                        onValueChange = { newUnit = it },
+                        label = { Text("Unit (e.g. kg, L, bottles)") },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                    )
+                    OutlinedTextField(
+                        value = newLow,
+                        onValueChange = { newLow = it },
+                        label = { Text("Low-stock alert below") },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    )
+                    Button(
+                        onClick = {
+                            vm.addInventoryItem(newName, newQty, newUnit, newLow)
+                            newName = ""
+                            newQty = ""
+                            newUnit = "kg"
+                            newLow = ""
+                            showAddForm = false
+                        },
+                        enabled =
+                            newName.isNotBlank() &&
+                                newQty.toDoubleOrNull() != null &&
+                                newLow.toDoubleOrNull() != null,
+                        modifier = Modifier.padding(vertical = 12.dp),
+                    ) {
+                        Text("Add stock item")
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(items, key = { it.id }) { inv ->
+                        InventoryRow(inv, vm)
+                    }
                 }
             }
         }
@@ -442,94 +891,6 @@ object AdminScreens {
     }
 
     @Composable
-    fun Reservations(vm: RestaurantViewModel) {
-        val list by vm.reservations.collectAsState()
-        var guest by remember { mutableStateOf("") }
-        var phone by remember { mutableStateOf("") }
-        var party by remember { mutableStateOf("2") }
-        var hours by remember { mutableStateOf("2") }
-
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-        ) {
-            ScreenHeader(
-                title = "Reservations",
-                subtitle = "Guest bookings",
-                accent = HeaderAccent.Tertiary,
-                decorationResId = R.drawable.decor_dining_table,
-            )
-            Column(Modifier.padding(16.dp)) {
-            OutlinedTextField(
-                value = guest,
-                onValueChange = { guest = it },
-                label = { Text("Guest name") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = phone,
-                onValueChange = { phone = it },
-                label = { Text("Phone") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = party,
-                onValueChange = { party = it },
-                label = { Text("Party size") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = hours,
-                onValueChange = { hours = it },
-                label = { Text("Hours from now") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Button(
-                onClick = {
-                    val h = hours.toDoubleOrNull()
-                    if (h != null && guest.isNotBlank()) {
-                        val p = party.toIntOrNull() ?: 2
-                        val at = System.currentTimeMillis() + (h * 3600_000).toLong()
-                        vm.addReservation(guest, phone, p, at, null)
-                        guest = ""
-                        phone = ""
-                    }
-                },
-                enabled = guest.isNotBlank(),
-                modifier = Modifier.padding(vertical = 8.dp),
-            ) {
-                Text("Book")
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            LazyColumn {
-                items(list, key = { it.id }) { r ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column {
-                            Text(r.guestName, fontWeight = FontWeight.Medium)
-                            Text(
-                                "${r.partySize} guests · ${fmt(r.atEpochMillis)}",
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                            Text(r.phone, style = MaterialTheme.typography.bodySmall)
-                        }
-                        OutlinedButton(onClick = { vm.deleteReservation(r) }) {
-                            Text("Remove")
-                        }
-                    }
-                }
-            }
-            }
-        }
-    }
-
-    @Composable
     fun Expenses(vm: RestaurantViewModel) {
         val list by vm.expenses.collectAsState()
         val s by vm.settings.collectAsState()
@@ -596,7 +957,7 @@ object AdminScreens {
                     modifier = Modifier.padding(bottom = 4.dp),
                 )
                 Text(
-                    "Configure the list under Global settings.",
+                    "Pick a category chip — defaults are built into the app.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 6.dp),
@@ -724,6 +1085,11 @@ object AdminScreens {
     @Composable
     fun Staff(vm: RestaurantViewModel) {
         val staff by vm.staff.collectAsState()
+        val absencesMap by vm.staffAbsencesByStaffId.collectAsState()
+        var showAddForm by remember { mutableStateOf(false) }
+        var newName by remember { mutableStateOf("") }
+        var newRole by remember { mutableStateOf("") }
+
         Column(
             modifier =
                 Modifier
@@ -732,19 +1098,68 @@ object AdminScreens {
         ) {
             ScreenHeader(
                 title = "Staff",
-                subtitle = "Salaries & shifts",
+                subtitle = "Salaries & absent days",
                 accent = HeaderAccent.Secondary,
                 decorationResId = R.drawable.decor_chef_hat,
+                actions = {
+                    IconButton(onClick = { showAddForm = !showAddForm }) {
+                        Icon(
+                            imageVector = if (showAddForm) Icons.Default.Close else Icons.Default.Add,
+                            contentDescription =
+                                if (showAddForm) {
+                                    "Close add staff form"
+                                } else {
+                                    "Add staff member"
+                                },
+                            tint = MaterialTheme.colorScheme.onSecondary,
+                        )
+                    }
+                },
             )
-            LazyColumn(
+            Column(
                 modifier =
                     Modifier
                         .weight(1f)
                         .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(staff, key = { it.id }) { s ->
-                    StaffRow(s, vm)
+                if (showAddForm) {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = newRole,
+                        onValueChange = { newRole = it },
+                        label = { Text("Role (e.g. Server, Chef)") },
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        singleLine = true,
+                    )
+                    Button(
+                        onClick = {
+                            vm.addStaff(newName, newRole)
+                            newName = ""
+                            newRole = ""
+                            showAddForm = false
+                        },
+                        enabled = newName.isNotBlank(),
+                        modifier = Modifier.padding(vertical = 12.dp),
+                    ) {
+                        Text("Add staff member")
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(staff, key = { it.id }) { s ->
+                        StaffRow(s, vm, absencesMap[s.id].orEmpty())
+                    }
                 }
             }
         }
@@ -754,6 +1169,7 @@ object AdminScreens {
     private fun StaffRow(
         member: StaffEntity,
         vm: RestaurantViewModel,
+        absences: List<StaffAbsenceEntity>,
     ) {
         var salaryInput by remember(member.id, member.salaryCents) {
             mutableStateOf(
@@ -764,6 +1180,37 @@ object AdminScreens {
                 },
             )
         }
+        var daysAgoInput by remember(member.id) { mutableStateOf("0") }
+        var absenceNote by remember(member.id) { mutableStateOf("") }
+        var showDeleteConfirm by remember { mutableStateOf(false) }
+
+        if (showDeleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirm = false },
+                title = { Text("Remove staff member?") },
+                text = {
+                    Text(
+                        "Delete \"${member.name}\" and their absent-day history? This cannot be undone.",
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteConfirm = false
+                            vm.deleteStaff(member)
+                        },
+                    ) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirm = false }) {
+                        Text("Cancel")
+                    }
+                },
+            )
+        }
+
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
             Column(
                 Modifier
@@ -772,51 +1219,34 @@ object AdminScreens {
             ) {
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f),
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.38f)),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.38f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                Icons.Default.Person,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(28.dp),
-                            )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                member.name,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            )
-                            Text(
-                                member.role,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
-                            )
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (member.onShift) "On shift" else "Off",
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(end = 8.dp),
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(28.dp),
                         )
-                        Switch(
-                            checked = member.onShift,
-                            onCheckedChange = { vm.setStaffShift(member, it) },
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            member.name,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                        Text(
+                            member.role,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
                         )
                     }
                 }
@@ -846,13 +1276,393 @@ object AdminScreens {
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
+                HorizontalDivider(
+                    Modifier.padding(vertical = 12.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.25f),
+                )
+                Text(
+                    "Absent days",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    "Days ago: 0 = today, 1 = yesterday. Duplicate calendar days are skipped.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                if (absences.isEmpty()) {
+                    Text(
+                        "No absent days recorded yet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(bottom = 10.dp),
+                    ) {
+                        absences.forEach { a ->
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        fmtDay(a.dayStartEpochMillis),
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                    a.note?.let { n ->
+                                        Text(
+                                            n,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                                        )
+                                    }
+                                }
+                                TextButton(onClick = { vm.deleteStaffAbsence(a) }) {
+                                    Text("Remove")
+                                }
+                            }
+                        }
+                    }
+                }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        value = daysAgoInput,
+                        onValueChange = { daysAgoInput = it.filter { ch -> ch.isDigit() } },
+                        label = { Text("Days ago") },
+                        modifier = Modifier.weight(0.35f),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                    OutlinedTextField(
+                        value = absenceNote,
+                        onValueChange = { absenceNote = it },
+                        label = { Text("Note (optional)") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                    )
+                }
+                Button(
+                    onClick = {
+                        val d = daysAgoInput.toIntOrNull() ?: 0
+                        vm.recordStaffAbsence(member.id, d, absenceNote)
+                        absenceNote = ""
+                    },
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Text("Record absent day")
+                }
+                OutlinedButton(
+                    onClick = { showDeleteConfirm = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 14.dp),
+                ) {
+                    Text("Remove worker")
+                }
+            }
+        }
+    }
+
+    private fun fmtDay(dayStartEpochMillis: Long): String {
+        val sdf = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault())
+        return sdf.format(Date(dayStartEpochMillis))
+    }
+
+    @Composable
+    private fun ReportPeriodControls(
+        vm: RestaurantViewModel,
+        zone: java.time.ZoneId,
+        selectedYm: YearMonth,
+        onSelectedYm: (YearMonth) -> Unit,
+        useCustomRange: Boolean,
+        onUseCustomRange: (Boolean) -> Unit,
+        customFrom: String,
+        onCustomFrom: (String) -> Unit,
+        customTo: String,
+        onCustomTo: (String) -> Unit,
+        customError: String?,
+        onCustomError: (String?) -> Unit,
+        showMonthPicker: Boolean,
+        onShowMonthPicker: (Boolean) -> Unit,
+        monthChoices: List<YearMonth>,
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(
+                selected = !useCustomRange,
+                onClick = {
+                    onUseCustomRange(false)
+                    onSelectedYm(YearMonth.now(zone))
+                },
+                label = { Text("Monthly") },
+            )
+            FilterChip(
+                selected = useCustomRange,
+                onClick = { onUseCustomRange(true) },
+                label = { Text("Custom dates") },
+            )
+        }
+        if (!useCustomRange) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilterChip(
+                    selected = selectedYm == YearMonth.now(zone),
+                    onClick = {
+                        onSelectedYm(YearMonth.now(zone))
+                    },
+                    label = { Text("This month") },
+                )
+                OutlinedButton(
+                    onClick = { onShowMonthPicker(true) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(formatMonthYear(selectedYm))
+                }
+            }
+            if (showMonthPicker) {
+                AlertDialog(
+                    onDismissRequest = { onShowMonthPicker(false) },
+                    title = { Text("Choose month") },
+                    text = {
+                        Column(
+                            Modifier
+                                .heightIn(max = 400.dp)
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            monthChoices.forEach { ym ->
+                                TextButton(
+                                    onClick = {
+                                        onSelectedYm(ym)
+                                        onShowMonthPicker(false)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(formatMonthYear(ym))
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { onShowMonthPicker(false) }) {
+                            Text("Close")
+                        }
+                    },
+                )
+            }
+        } else {
+            Text(
+                "Custom date range (YYYY-MM-DD)",
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                OutlinedTextField(
+                    value = customFrom,
+                    onValueChange = {
+                        onCustomFrom(it)
+                        onCustomError(null)
+                    },
+                    label = { Text("From") },
+                    isError = customError != null,
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = customTo,
+                    onValueChange = {
+                        onCustomTo(it)
+                        onCustomError(null)
+                    },
+                    label = { Text("To") },
+                    isError = customError != null,
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                )
+            }
+            customError?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            Button(
+                onClick = {
+                    try {
+                        val start = LocalDate.parse(customFrom.trim())
+                        val end = LocalDate.parse(customTo.trim())
+                        if (end.isBefore(start)) {
+                            onCustomError("End date must be on or after start.")
+                            return@Button
+                        }
+                        vm.loadCustomRangeReports(start, end)
+                        onCustomError(null)
+                    } catch (_: Exception) {
+                        onCustomError("Use dates like 2026-05-01")
+                    }
+                },
+                modifier = Modifier.padding(top = 8.dp),
+            ) {
+                Text("Apply range")
+            }
+        }
+    }
+
+    @Composable
+    private fun ReportFinancialBreakdown(summary: RestaurantViewModel.ReportSummaryUi) {
+        val onPrimary = MaterialTheme.colorScheme.onPrimaryContainer
+        val profitColor =
+            when {
+                summary.netProfitCents > 0 -> MaterialTheme.colorScheme.primary
+                summary.netProfitCents < 0 -> MaterialTheme.colorScheme.error
+                else -> onPrimary
+            }
+        Card(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text(
+                    "Financial summary",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = onPrimary,
+                )
+                Text(
+                    "Paid sales, logged expenses, and your staff salary share for this period (same logic as the dashboard).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = onPrimary.copy(alpha = 0.88f),
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Total revenue (paid sales)",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = onPrimary,
+                    )
+                    Text(
+                        formatCents(summary.paidRevenueCents),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = onPrimary,
+                    )
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Expenses (logged in period)",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = onPrimary,
+                    )
+                    Text(
+                        formatCents(summary.expenseTotalCents),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = onPrimary,
+                    )
+                }
+                Column(Modifier.padding(top = 10.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Staff salaries (period share)",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = onPrimary,
+                        )
+                        Text(
+                            formatCents(summary.allocatedSalaryCostCents),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = onPrimary,
+                        )
+                    }
+                    Text(
+                        "Monthly salaries total ${formatCents(summary.monthlyStaffSalariesCents)} ÷ 30 × ${summary.periodDays} days in period.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = onPrimary.copy(alpha = 0.85f),
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                HorizontalDivider(
+                    Modifier.padding(vertical = 14.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Net profit",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = onPrimary,
+                    )
+                    Text(
+                        formatCents(summary.netProfitCents),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = profitColor,
+                    )
+                }
+                Text(
+                    "Revenue − expenses − staff salary share.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = onPrimary.copy(alpha = 0.82f),
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+                HorizontalDivider(
+                    Modifier.padding(top = 14.dp, bottom = 10.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f),
+                )
+                Text(
+                    "${summary.paidOrderCount} paid orders · ${summary.totalOrderCount} tickets in period",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = onPrimary.copy(alpha = 0.88f),
+                )
             }
         }
     }
 
     @Composable
     fun Reports(vm: RestaurantViewModel) {
-        val rows by vm.reportRows.collectAsState()
         val summary by vm.reportSummary.collectAsState()
         val zone = remember { java.time.ZoneId.systemDefault() }
         var selectedYm by remember { mutableStateOf(YearMonth.now(zone)) }
@@ -882,232 +1692,316 @@ object AdminScreens {
         ) {
             ScreenHeader(
                 title = "Reports",
-                subtitle = "Monthly & custom date ranges",
+                subtitle = "Revenue, expenses, salaries & net profit",
                 accent = HeaderAccent.Primary,
                 decorationResId = R.drawable.ic_fork_knife,
             )
             Column(
                 Modifier
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp)
-                    .weight(1f),
+                    .fillMaxWidth(),
             ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(
-                        selected = !useCustomRange,
-                        onClick = {
-                            useCustomRange = false
-                            selectedYm = YearMonth.now(zone)
-                        },
-                        label = { Text("Monthly") },
-                    )
-                    FilterChip(
-                        selected = useCustomRange,
-                        onClick = { useCustomRange = true },
-                        label = { Text("Custom dates") },
-                    )
-                }
-                if (!useCustomRange) {
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        FilterChip(
-                            selected = selectedYm == YearMonth.now(zone),
-                            onClick = {
-                                selectedYm = YearMonth.now(zone)
-                            },
-                            label = { Text("This month") },
-                        )
-                        OutlinedButton(
-                            onClick = { showMonthPicker = true },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(formatMonthYear(selectedYm))
-                        }
-                    }
-                    if (showMonthPicker) {
-                        AlertDialog(
-                            onDismissRequest = { showMonthPicker = false },
-                            title = { Text("Choose month") },
-                            text = {
-                                Column(
-                                    Modifier
-                                        .heightIn(max = 400.dp)
-                                        .verticalScroll(rememberScrollState()),
-                                ) {
-                                    monthChoices.forEach { ym ->
-                                        TextButton(
-                                            onClick = {
-                                                selectedYm = ym
-                                                showMonthPicker = false
-                                            },
-                                            modifier = Modifier.fillMaxWidth(),
-                                        ) {
-                                            Text(formatMonthYear(ym))
-                                        }
-                                    }
-                                }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showMonthPicker = false }) {
-                                    Text("Close")
-                                }
-                            },
-                        )
-                    }
-                } else {
-                    Text(
-                        "Custom date range (YYYY-MM-DD)",
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(bottom = 4.dp),
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        OutlinedTextField(
-                            value = customFrom,
-                            onValueChange = {
-                                customFrom = it
-                                customError = null
-                            },
-                            label = { Text("From") },
-                            isError = customError != null,
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                        )
-                        OutlinedTextField(
-                            value = customTo,
-                            onValueChange = {
-                                customTo = it
-                                customError = null
-                            },
-                            label = { Text("To") },
-                            isError = customError != null,
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                        )
-                    }
-                    customError?.let {
-                        Text(
-                            it,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
-                    Button(
-                        onClick = {
-                            try {
-                                val start = LocalDate.parse(customFrom.trim())
-                                val end = LocalDate.parse(customTo.trim())
-                                if (end.isBefore(start)) {
-                                    customError = "End date must be on or after start."
-                                    return@Button
-                                }
-                                vm.loadCustomRangeReports(start, end)
-                                customError = null
-                            } catch (_: Exception) {
-                                customError = "Use dates like 2026-05-01"
-                            }
-                        },
-                        modifier = Modifier.padding(top = 8.dp),
-                    ) {
-                        Text("Apply range")
-                    }
-                }
+                ReportPeriodControls(
+                    vm = vm,
+                    zone = zone,
+                    selectedYm = selectedYm,
+                    onSelectedYm = { selectedYm = it },
+                    useCustomRange = useCustomRange,
+                    onUseCustomRange = { useCustomRange = it },
+                    customFrom = customFrom,
+                    onCustomFrom = { customFrom = it },
+                    customTo = customTo,
+                    onCustomTo = { customTo = it },
+                    customError = customError,
+                    onCustomError = { customError = it },
+                    showMonthPicker = showMonthPicker,
+                    onShowMonthPicker = { showMonthPicker = it },
+                    monthChoices = monthChoices,
+                )
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+                ReportFinancialBreakdown(summary)
+                Text(
+                    "Use Order history under Operations for the ticket list and line-item detail.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+        }
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Composable
+    fun Orders(vm: RestaurantViewModel) {
+        val rows by vm.reportRows.collectAsState()
+        val orderDetail by vm.reportOrderDetail.collectAsState()
+
+        LaunchedEffect(Unit) {
+            vm.refreshReports()
+        }
+
+        LazyColumn(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(bottom = 8.dp),
+        ) {
+            item(key = "order_history_header") {
+                ScreenHeader(
+                    title = "Order history",
+                    subtitle = "Recent tickets — tap for line items",
+                    accent = HeaderAccent.Primary,
+                    decorationResId = R.drawable.ic_fork_knife,
+                )
+            }
+            item(key = "order_history_toolbar") {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Orders",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                        OutlinedButton(onClick = { vm.refreshReports() }) {
+                            Text("Refresh")
+                        }
+                    }
+                    Text(
+                        "Showing the latest tickets (newest first). Tap an order to see menu line items.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+            }
+            items(rows, key = { it.orderId }) { row ->
                 Card(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 6.dp),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        ),
                 ) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(
-                            "Paid revenue (period)",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
-                        )
-                        Text(
-                            formatCents(summary.paidRevenueCents),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                        Text(
-                            "${summary.paidOrderCount} paid orders · ${summary.totalOrderCount} tickets total",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.88f),
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                    }
-                }
-
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "Orders in period",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.secondary,
-                    )
-                    OutlinedButton(
-                        onClick = {
-                            if (useCustomRange) {
-                                try {
-                                    val start = LocalDate.parse(customFrom.trim())
-                                    val end = LocalDate.parse(customTo.trim())
-                                    if (!end.isBefore(start)) {
-                                        vm.loadCustomRangeReports(start, end)
-                                    }
-                                } catch (_: Exception) {
-                                    /* keep current */
-                                }
-                            } else {
-                                vm.loadMonthReports(selectedYm)
-                            }
-                        },
+                    Row(
+                        Modifier
+                            .padding(12.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Text("Reload")
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .clickable {
+                                    vm.openReportOrder(row.orderId)
+                                },
+                        ) {
+                            Text(
+                                "Order ID: ${row.orderId}",
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                            Text(
+                                "${row.status} · ${formatCents(row.totalCents)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                            Text(
+                                "${fmt(row.createdAt)} · ${row.lineCount} lines · table ${row.tableId ?: "—"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color =
+                                    MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.88f),
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                        if (row.linePreviews.isNotEmpty()) {
+                            ReportsLineImageCarousel(
+                                lines = row.linePreviews,
+                                modifier = Modifier.width(220.dp),
+                                labelColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                        }
                     }
                 }
-                Text(
-                    "Ticket list matches the selected period above.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    items(rows, key = { it.orderId }) { row ->
-                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
-                            Column(Modifier.padding(12.dp)) {
+            }
+        }
+
+        orderDetail?.let { d ->
+            AlertDialog(
+                onDismissRequest = { vm.dismissReportOrderDetail() },
+                title = {
+                    Text(
+                        "Order ID: ${d.orderId}",
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
+                text = {
+                    Column(
+                        Modifier
+                            .heightIn(max = 420.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        if (d.lines.isNotEmpty()) {
+                            ReportsLineImageCarousel(
+                                lines = d.lines.map { it.toLinePreview() },
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 10.dp),
+                                labelColor = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        Text(
+                            "${fmt(d.createdAt)} · ${d.status} · table ${d.tableId ?: "—"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                        Text(
+                            "Items",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        )
+                        if (d.lines.isEmpty()) {
+                            Text(
+                                "No line items stored for this ticket.",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        } else {
+                            d.lines.forEachIndexed { index, line ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        Modifier.padding(vertical = 8.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
+                                }
                                 Text(
-                                    "#${row.orderId} · ${row.status} · ${formatCents(row.totalCents)}",
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    "${line.quantity} × ${line.itemName}",
+                                    fontWeight = FontWeight.Medium,
                                 )
                                 Text(
-                                    "${fmt(row.createdAt)} · ${row.lineCount} lines · table ${row.tableId ?: "—"}",
+                                    "${formatCents(line.unitPriceCents)} each · ${formatCents(line.lineTotalCents)} line total",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.88f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
+                        HorizontalDivider(
+                            Modifier.padding(vertical = 12.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                        Text(
+                            "Ticket total: ${formatCents(d.totalCents)}",
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { vm.dismissReportOrderDetail() }) {
+                        Text("Close")
+                    }
+                },
+            )
+        }
+    }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Composable
+    private fun ReportsLineImageCarousel(
+        lines: List<RestaurantRepository.ReportLinePreview>,
+        modifier: Modifier = Modifier,
+        labelColor: Color,
+    ) {
+        if (lines.isEmpty()) return
+        val pagerState = rememberPagerState(pageCount = { lines.size })
+        HorizontalPager(
+            state = pagerState,
+            modifier = modifier.height(188.dp),
+            // Wider inset so neighbours peek in — hints that the row scrolls.
+            contentPadding = PaddingValues(horizontal = 56.dp),
+            pageSpacing = 10.dp,
+            verticalAlignment = Alignment.CenterVertically,
+        ) { page ->
+            val line = lines[page]
+            val offset =
+                (pagerState.currentPage - page).toFloat() + pagerState.currentPageOffsetFraction
+            val emphasis = (1f - kotlin.math.abs(offset).coerceIn(0f, 1f))
+            val scale = 0.74f + 0.26f * emphasis
+            // Side tiles stay fairly clear; only a light blur hints they’re off-centre.
+            val alphaV = 0.74f + 0.26f * emphasis
+            val showLabel = emphasis >= 0.72f
+            val sideAmount = (1f - emphasis).coerceIn(0f, 1f)
+            // Light blur only (API 31+) — heavy blur made dishes hard to see.
+            val blurRadiusDp =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && sideAmount > 0.12f) {
+                    kotlin.math.min(2.2f * sideAmount, 2.8f).dp
+                } else {
+                    0.dp
+                }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier =
+                    Modifier
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            alpha = alphaV
+                        }
+                        .then(
+                            if (blurRadiusDp > 0.dp) {
+                                Modifier.blur(blurRadiusDp)
+                            } else {
+                                Modifier
+                            },
+                        ),
+            ) {
+                ReportCarouselPhotoTile(
+                    menuItemId = line.menuItemId,
+                    itemName = line.itemName,
+                    category = line.category,
+                    customPhotoPath = line.customPhotoPath,
+                    quantity = line.quantity,
+                    photoSize = 76.dp,
+                    highlighted = emphasis >= 0.82f,
+                )
+                Box(
+                    Modifier
+                        .padding(top = 6.dp)
+                        .height(38.dp)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.TopCenter,
+                ) {
+                    if (showLabel) {
+                        Text(
+                            text = line.itemName,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = labelColor,
+                        )
                     }
                 }
             }
@@ -1126,7 +2020,6 @@ object AdminScreens {
         var tax by remember(s?.taxPercent) { mutableStateOf(s?.taxPercent?.toString() ?: "5") }
         var svc by remember(s?.serviceChargePercent) { mutableStateOf(s?.serviceChargePercent?.toString() ?: "0") }
         var menuCatText by remember { mutableStateOf("") }
-        var expenseCatText by remember { mutableStateOf("") }
         var modules by remember(s?.modulesJson) { mutableStateOf(parseModulesJson(s?.modulesJson)) }
 
         LaunchedEffect(s) {
@@ -1134,7 +2027,6 @@ object AdminScreens {
             tax = s?.taxPercent?.toString() ?: "5"
             svc = s?.serviceChargePercent?.toString() ?: "0"
             menuCatText = pipeListToMultiline(s?.menuCategories)
-            expenseCatText = pipeListToMultiline(s?.expenseCategories)
             modules = parseModulesJson(s?.modulesJson)
         }
 
@@ -1146,7 +2038,7 @@ object AdminScreens {
         ) {
             ScreenHeader(
                 title = "Global settings",
-                subtitle = "Venue, categories & modules",
+                subtitle = "Venue, menu categories & modules",
                 accent = HeaderAccent.Tertiary,
                 decorationResId = R.drawable.decor_plate_meal,
             )
@@ -1204,39 +2096,13 @@ object AdminScreens {
                     color = MaterialTheme.colorScheme.outlineVariant,
                 )
                 Text(
-                    "Expense categories",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
-                Text(
-                    "One per line — only these show when logging expenses (e.g. Food, Water, Tomatoes).",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                OutlinedTextField(
-                    value = expenseCatText,
-                    onValueChange = { expenseCatText = it },
-                    label = { Text("Categories") },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 120.dp),
-                    minLines = 4,
-                )
-                HorizontalDivider(
-                    Modifier.padding(vertical = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                )
-                Text(
                     "Restaurant modules",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.secondary,
                 )
                 Text(
-                    "Turn off what you do not use — hidden from Operations and the Kitchen tab.",
+                    "Turn off what you do not use — hidden from Operations and the Kitchen tab. Reports and Order history always stay listed.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -1252,19 +2118,6 @@ object AdminScreens {
                     Switch(
                         checked = modules.kitchen,
                         onCheckedChange = { modules = modules.copy(kitchen = it) },
-                    )
-                }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Reservations", modifier = Modifier.weight(1f))
-                    Switch(
-                        checked = modules.reservations,
-                        onCheckedChange = { modules = modules.copy(reservations = it) },
                     )
                 }
                 Row(
@@ -1300,23 +2153,10 @@ object AdminScreens {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Staff & shifts", modifier = Modifier.weight(1f))
+                    Text("Staff", modifier = Modifier.weight(1f))
                     Switch(
                         checked = modules.staff,
                         onCheckedChange = { modules = modules.copy(staff = it) },
-                    )
-                }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Reports", modifier = Modifier.weight(1f))
-                    Switch(
-                        checked = modules.reports,
-                        onCheckedChange = { modules = modules.copy(reports = it) },
                     )
                 }
                 Row(
@@ -1343,7 +2183,7 @@ object AdminScreens {
                                 serviceChargePercent = sc,
                                 qrMenuToken = s?.qrMenuToken ?: "",
                                 menuCategories = multilineToPipeList(menuCatText),
-                                expenseCategories = multilineToPipeList(expenseCatText),
+                                expenseCategories = s?.expenseCategories ?: "",
                                 modulesJson = modulesToJson(modules),
                             ),
                         )
@@ -1353,7 +2193,7 @@ object AdminScreens {
                     Text("Save settings")
                 }
                 Text(
-                    "Leave category lists empty to use built-in defaults. Amounts are INR (₹).",
+                    "Leave menu categories empty to use built-in defaults. Amounts are INR (₹).",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 16.dp),
                 )

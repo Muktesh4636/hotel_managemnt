@@ -1,6 +1,8 @@
 package com.restaurant.management.ui
 
+import android.content.Context
 import android.net.Uri
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -9,7 +11,7 @@ import com.restaurant.management.data.local.entity.AppSettingsEntity
 import com.restaurant.management.data.local.entity.ExpenseEntity
 import com.restaurant.management.data.local.entity.InventoryEntity
 import com.restaurant.management.data.local.entity.MenuItemEntity
-import com.restaurant.management.data.local.entity.ReservationEntity
+import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
 import com.restaurant.management.data.local.entity.TableEntity
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +21,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.YearMonth
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.restaurant.management.ui.util.BillPrinter
 import com.restaurant.management.ui.util.ReportDateUtils
 
 class RestaurantViewModel(
@@ -53,13 +58,6 @@ class RestaurantViewModel(
             emptyList(),
         )
 
-    val reservations =
-        repo.observeReservations().stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList(),
-        )
-
     val inventory =
         repo.observeInventory().stateIn(
             viewModelScope,
@@ -79,6 +77,13 @@ class RestaurantViewModel(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
             emptyList(),
+        )
+
+    val staffAbsencesByStaffId =
+        repo.observeStaffAbsencesByStaff().stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyMap(),
         )
 
     val settings =
@@ -158,6 +163,30 @@ class RestaurantViewModel(
             repo.sendOrderToKitchen(orderId)
         }
 
+    /** Opens system print dialog for a bill (register printers under Settings → Printing). */
+    fun printOrderBill(
+        context: Context,
+        orderId: Long,
+    ) = viewModelScope.launch {
+        val detail = repo.getReportOrderDetail(orderId)
+        if (detail == null) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context.applicationContext,
+                    "Could not load order for printing",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+            return@launch
+        }
+        val venue =
+            repo.getSettingsOnce()?.venueName?.trim()?.takeIf { it.isNotEmpty() }
+                ?: "Restaurant"
+        withContext(Dispatchers.Main) {
+            BillPrinter.print(context, venue, detail)
+        }
+    }
+
     fun advanceLine(lineId: Long) =
         viewModelScope.launch {
             repo.advanceKitchenLine(lineId)
@@ -197,6 +226,22 @@ class RestaurantViewModel(
         photoUri: Uri? = null,
     ) = viewModelScope.launch { repo.addMenuItem(name, category, priceInInr, photoUri) }
 
+    fun updateMenuItem(
+        item: MenuItemEntity,
+        name: String,
+        category: String,
+        priceInInr: String,
+        photoUri: Uri?,
+        removeCustomPhoto: Boolean,
+    ) = viewModelScope.launch {
+        repo.updateMenuItem(item, name, category, priceInInr, photoUri, removeCustomPhoto)
+    }
+
+    fun deleteMenuItem(item: MenuItemEntity) =
+        viewModelScope.launch {
+            repo.deleteMenuItem(item)
+        }
+
     fun saveInventory(item: InventoryEntity) =
         viewModelScope.launch {
             repo.updateInventory(item)
@@ -206,6 +251,15 @@ class RestaurantViewModel(
         viewModelScope.launch {
             repo.deleteInventory(item)
         }
+
+    fun addInventoryItem(
+        name: String,
+        quantity: String,
+        unit: String,
+        lowStockThreshold: String,
+    ) = viewModelScope.launch {
+        repo.addInventoryItem(name, quantity, unit, lowStockThreshold)
+    }
 
     fun addExpense(
         expenseCategory: String,
@@ -219,21 +273,6 @@ class RestaurantViewModel(
     fun deleteExpense(e: ExpenseEntity) =
         viewModelScope.launch {
             repo.deleteExpense(e)
-        }
-
-    fun addReservation(
-        name: String,
-        phone: String,
-        party: Int,
-        atMillis: Long,
-        notes: String?,
-    ) = viewModelScope.launch {
-        repo.addReservation(name, phone, party, atMillis, notes)
-    }
-
-    fun deleteReservation(r: ReservationEntity) =
-        viewModelScope.launch {
-            repo.deleteReservation(r)
         }
 
     fun setStaffShift(
@@ -250,6 +289,31 @@ class RestaurantViewModel(
         repo.saveStaffSalary(member, salaryInInr)
     }
 
+    fun addStaff(
+        name: String,
+        role: String,
+    ) = viewModelScope.launch {
+        repo.addStaff(name, role)
+    }
+
+    fun deleteStaff(member: StaffEntity) =
+        viewModelScope.launch {
+            repo.deleteStaff(member)
+        }
+
+    fun recordStaffAbsence(
+        staffId: Long,
+        daysAgoFromToday: Int,
+        note: String?,
+    ) = viewModelScope.launch {
+        repo.addStaffAbsence(staffId, daysAgoFromToday, note)
+    }
+
+    fun deleteStaffAbsence(row: StaffAbsenceEntity) =
+        viewModelScope.launch {
+            repo.deleteStaffAbsence(row)
+        }
+
     fun saveSettings(s: AppSettingsEntity) =
         viewModelScope.launch {
             repo.updateSettings(s)
@@ -260,13 +324,31 @@ class RestaurantViewModel(
     val reportRows = _reportRows.asStateFlow()
 
     private val _reportSummary =
-        MutableStateFlow(ReportSummaryUi(0, 0, 0))
+        MutableStateFlow(ReportSummaryUi())
     val reportSummary = _reportSummary.asStateFlow()
 
+    private val _reportOrderDetail =
+        MutableStateFlow<RestaurantRepository.ReportOrderDetail?>(null)
+    val reportOrderDetail = _reportOrderDetail.asStateFlow()
+
+    fun openReportOrder(orderId: Long) =
+        viewModelScope.launch {
+            _reportOrderDetail.value = repo.getReportOrderDetail(orderId)
+        }
+
+    fun dismissReportOrderDetail() {
+        _reportOrderDetail.value = null
+    }
+
     data class ReportSummaryUi(
-        val paidRevenueCents: Int,
-        val paidOrderCount: Int,
-        val totalOrderCount: Int,
+        val paidRevenueCents: Int = 0,
+        val paidOrderCount: Int = 0,
+        val totalOrderCount: Int = 0,
+        val expenseTotalCents: Int = 0,
+        val monthlyStaffSalariesCents: Int = 0,
+        val periodDays: Long = 0,
+        val allocatedSalaryCostCents: Int = 0,
+        val netProfitCents: Int = 0,
     )
 
     fun loadReportsForRange(
@@ -280,6 +362,11 @@ class RestaurantViewModel(
                 paidRevenueCents = b.paidRevenueCents,
                 paidOrderCount = b.paidOrderCount,
                 totalOrderCount = b.totalOrderCount,
+                expenseTotalCents = b.expenseTotalCents,
+                monthlyStaffSalariesCents = b.monthlyStaffSalariesCents,
+                periodDays = b.periodDays,
+                allocatedSalaryCostCents = b.allocatedSalaryCostCents,
+                netProfitCents = b.netProfitCents,
             )
     }
 
@@ -308,7 +395,7 @@ class RestaurantViewModel(
     fun refreshReports() =
         viewModelScope.launch {
             _reportRows.value = repo.recentReports(80)
-            _reportSummary.value = ReportSummaryUi(0, 0, 0)
+            _reportSummary.value = ReportSummaryUi()
         }
 }
 

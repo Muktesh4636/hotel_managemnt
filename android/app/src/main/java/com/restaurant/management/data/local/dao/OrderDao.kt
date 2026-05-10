@@ -27,6 +27,10 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE id = :id")
     suspend fun getOrder(id: Long): OrderEntity?
 
+    @Transaction
+    @Query("SELECT * FROM orders WHERE id = :orderId")
+    suspend fun getOrderWithLines(orderId: Long): OrderWithLines?
+
     @Query("SELECT * FROM order_lines WHERE id = :id")
     suspend fun getLine(id: Long): OrderLineEntity?
 

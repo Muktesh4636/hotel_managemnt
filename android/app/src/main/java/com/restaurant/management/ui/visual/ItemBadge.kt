@@ -3,12 +3,14 @@ package com.restaurant.management.ui.visual
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,6 +26,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.restaurant.management.R
 import java.io.File
@@ -86,6 +89,93 @@ private fun ResolvedMenuItemImage(
             modifier = modifier,
             contentScale = contentScale,
         )
+    }
+}
+
+/** Square crop for lists/carousels (badge framing lives in the caller). */
+@Composable
+fun MenuItemPhotoThumbnail(
+    itemName: String,
+    category: String,
+    customPhotoPath: String?,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop,
+) {
+    ResolvedMenuItemImage(
+        itemName = itemName,
+        category = category,
+        customPhotoPath = customPhotoPath,
+        modifier = modifier,
+        contentScale = contentScale,
+    )
+}
+
+/**
+ * One dish photo for reports carousel; [highlighted] draws a stronger ring when this page is centered.
+ */
+@Composable
+fun ReportCarouselPhotoTile(
+    menuItemId: Long,
+    itemName: String,
+    category: String,
+    customPhotoPath: String?,
+    quantity: Int,
+    photoSize: Dp = 72.dp,
+    highlighted: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    val ring = AccentRingColors[accentIndexForId(menuItemId)]
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .size(photoSize)
+                .border(
+                    width = if (highlighted) 3.dp else 1.dp,
+                    color =
+                        if (highlighted) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            ring.copy(alpha = 0.55f)
+                        },
+                    shape = RoundedCornerShape(14.dp),
+                )
+                .clip(RoundedCornerShape(14.dp))
+                .background(
+                    brush =
+                        Brush.linearGradient(
+                            colors =
+                                listOf(
+                                    ring.copy(alpha = 0.55f),
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                ),
+                        ),
+                )
+                .padding(4.dp),
+        ) {
+            MenuItemPhotoThumbnail(
+                itemName = itemName,
+                category = category,
+                customPhotoPath = customPhotoPath,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(10.dp)),
+            )
+        }
+        if (quantity > 1) {
+            Text(
+                "×$quantity",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier =
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 2.dp, end = 2.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                        .padding(horizontal = 5.dp, vertical = 2.dp),
+            )
+        }
     }
 }
 

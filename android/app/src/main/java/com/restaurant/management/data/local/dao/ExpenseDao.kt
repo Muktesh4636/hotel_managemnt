@@ -17,6 +17,14 @@ interface ExpenseDao {
     )
     fun observeExpenseTotalSince(fromEpochMillis: Long): Flow<Int>
 
+    @Query(
+        "SELECT IFNULL(SUM(amountCents), 0) FROM expenses WHERE createdAtEpochMillis >= :fromMillis AND createdAtEpochMillis < :toMillisExclusive",
+    )
+    suspend fun sumBetween(
+        fromMillis: Long,
+        toMillisExclusive: Long,
+    ): Int
+
     @Insert
     suspend fun insert(e: ExpenseEntity): Long
 

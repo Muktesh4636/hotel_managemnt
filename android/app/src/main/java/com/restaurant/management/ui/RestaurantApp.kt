@@ -1,6 +1,10 @@
 package com.restaurant.management.ui
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Home
@@ -20,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -37,9 +40,9 @@ object Destinations {
     const val MORE = "more"
     const val MENU_ADMIN = "menu_admin"
     const val INVENTORY = "inventory"
-    const val RESERVATIONS = "reservations"
     const val STAFF = "staff"
     const val REPORTS = "reports"
+    const val ORDERS = "orders"
     const val EXPENSES = "expenses"
     const val SETTINGS = "settings"
     const val QR_MENU = "qr_menu"
@@ -56,9 +59,9 @@ private val moreRoutes =
         Destinations.MORE,
         Destinations.MENU_ADMIN,
         Destinations.INVENTORY,
-        Destinations.RESERVATIONS,
         Destinations.STAFF,
         Destinations.REPORTS,
+        Destinations.ORDERS,
         Destinations.EXPENSES,
         Destinations.SETTINGS,
         Destinations.QR_MENU,
@@ -88,6 +91,11 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        // Avoid stacking bottom system-bar inset on top of the nav bar (extra gap above bottom nav).
+        contentWindowInsets =
+            WindowInsets.safeDrawing.only(
+                WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+            ),
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -113,12 +121,25 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
                                 unselectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                             ),
                         onClick = {
-                            navController.navigate(tab.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                            if (tab.route == Destinations.MORE) {
+                                // Always return to the Operations hub when tapping More again
+                                // (clears Customer QR, Reports, Settings, etc. stacked above it).
+                                navController.navigate(Destinations.MORE) {
+                                    popUpTo(Destinations.MORE) { inclusive = true }
+                                    launchSingleTop = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
+                            } else {
+                                // Route-based popUpTo matches the graph start route ("dashboard") reliably.
+                                // Using findStartDestination().id could leave nested More routes on the stack,
+                                // so Home appeared selected but the screen stayed on Menu / Settings, etc.
+                                navController.navigate(tab.route) {
+                                    popUpTo(Destinations.DASHBOARD) {
+                                        inclusive = false
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
                             }
                         },
                     )
@@ -156,14 +177,14 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
             composable(Destinations.INVENTORY) {
                 AdminScreens.Inventory(vm)
             }
-            composable(Destinations.RESERVATIONS) {
-                AdminScreens.Reservations(vm)
-            }
             composable(Destinations.STAFF) {
                 AdminScreens.Staff(vm)
             }
             composable(Destinations.REPORTS) {
                 AdminScreens.Reports(vm)
+            }
+            composable(Destinations.ORDERS) {
+                AdminScreens.Orders(vm)
             }
             composable(Destinations.EXPENSES) {
                 AdminScreens.Expenses(vm)

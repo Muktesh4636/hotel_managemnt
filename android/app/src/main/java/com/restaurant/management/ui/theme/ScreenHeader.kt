@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,6 +34,7 @@ fun ScreenHeader(
     subtitle: String? = null,
     accent: HeaderAccent = HeaderAccent.Primary,
     @DrawableRes decorationResId: Int? = null,
+    actions: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val bg: Color
     val fg: Color
@@ -78,6 +80,13 @@ fun ScreenHeader(
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
+            }
+            if (actions != null) {
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                    content = actions,
+                )
             }
             if (decorationResId != null) {
                 Image(

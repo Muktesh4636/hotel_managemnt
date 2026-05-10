@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- API 27+: light navigation bar icons; not available on API 26. -->
+    <style name="Theme.RestaurantManagement" parent="Theme.RestaurantManagement.Base">
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>
