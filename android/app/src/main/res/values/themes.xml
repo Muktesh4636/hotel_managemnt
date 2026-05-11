@@ -9,4 +9,11 @@
         <item name="android:windowLightStatusBar">true</item>
     </style>
     <style name="Theme.RestaurantManagement" parent="Theme.RestaurantManagement.Base" />
+    <!-- Cold start: same mark as launcher; hands off to main theme via postSplashScreenTheme. -->
+    <style name="Theme.RestaurantManagement.Launcher" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.RestaurantManagement</item>
+        <item name="windowSplashScreenAnimationDuration">200</item>
+    </style>
 </resources>

@@ -3,6 +3,7 @@ package com.restaurant.management.ui
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
+import com.restaurant.management.BuildConfig
 import com.restaurant.management.data.remote.ApiPrefs
 import com.restaurant.management.data.remote.DjangoApiClient
 import org.json.JSONObject
@@ -341,7 +342,10 @@ class RestaurantViewModel(
         onDone: (ok: Boolean, message: String) -> Unit,
     ) = viewModelScope.launch {
         try {
-            val trimmedBase = baseUrl.trim().trimEnd('/')
+            var trimmedBase = baseUrl.trim().trimEnd('/')
+            if (trimmedBase.isEmpty()) {
+                trimmedBase = BuildConfig.API_DEFAULT_BASE_URL.trim().trimEnd('/')
+            }
             if (trimmedBase.isEmpty()) {
                 withContext(Dispatchers.Main) {
                     onDone(false, "Enter the server URL (e.g. http://10.0.2.2:8000)")
@@ -396,6 +400,21 @@ class RestaurantViewModel(
                 }
             withContext(Dispatchers.Main) {
                 onDone(false, msg)
+            }
+        }
+    }
+
+    /**
+     * Pulls `/api/v1/sync/full/` when URL + token are saved (silent; no toast).
+     * Used on activity resume so the phone stays in sync with the server after you connect once.
+     */
+    fun syncPullIfConnected(appContext: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!ApiPrefs(appContext.applicationContext).isConfigured()) return@launch
+            try {
+                repo.backendSyncNow()
+            } catch (_: Exception) {
+                // offline or expired token — ignore
             }
         }
     }

@@ -1,9 +1,11 @@
 package com.restaurant.management.data.local.entity
 
+import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "menu_items")
+@Immutable
 data class MenuItemEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,

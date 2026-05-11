@@ -1,9 +1,13 @@
 package com.restaurant.management.data.remote
 
 import android.content.Context
+import com.restaurant.management.BuildConfig
 
 /**
  * Stores Django REST base URL and API token (after "Log in to backend" in settings).
+ *
+ * When nothing is saved, [baseUrl] falls back to [BuildConfig.API_DEFAULT_BASE_URL] (production
+ * host in release builds) so every API path (`/api/v1/...`) targets your deployed server.
  */
 class ApiPrefs(
     context: Context,
@@ -12,7 +16,11 @@ class ApiPrefs(
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     var baseUrl: String
-        get() = p.getString(KEY_BASE, "")?.trim()?.trimEnd('/') ?: ""
+        get() {
+            val stored = p.getString(KEY_BASE, null)?.trim()?.trimEnd('/') ?: ""
+            if (stored.isNotBlank()) return stored
+            return BuildConfig.API_DEFAULT_BASE_URL.trim().trimEnd('/')
+        }
         set(value) {
             p.edit().putString(KEY_BASE, value.trim().trimEnd('/')).apply()
         }
@@ -24,6 +32,19 @@ class ApiPrefs(
         }
 
     fun isConfigured(): Boolean = baseUrl.isNotBlank() && token.isNotBlank()
+
+    /**
+     * Writes [BuildConfig.API_DEFAULT_BASE_URL] to preferences when none is stored, so the app is
+     * explicitly tied to the production host (visible in Settings and used for login/sync).
+     */
+    fun ensureDefaultBackendUrlPersisted() {
+        val d = BuildConfig.API_DEFAULT_BASE_URL.trim().trimEnd('/')
+        if (d.isEmpty()) return
+        val stored = p.getString(KEY_BASE, null)?.trim() ?: ""
+        if (stored.isBlank()) {
+            p.edit().putString(KEY_BASE, d).apply()
+        }
+    }
 
     fun clear() {
         p.edit().remove(KEY_TOKEN).apply()

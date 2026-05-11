@@ -21,16 +21,36 @@ class VenueTableSerializer(serializers.ModelSerializer):
 
 
 class MenuItemSerializer(serializers.ModelSerializer):
+    """API field `price` is amount in smallest currency unit (paise), stored as `price_cents` on the model."""
+
+    price = serializers.IntegerField(source="price_cents", min_value=0)
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = MenuItem
         fields = (
             "id",
             "name",
             "category",
-            "price_cents",
+            "price",
             "is_available",
             "custom_photo_url",
+            "image_url",
         )
+
+    def get_image_url(self, obj: MenuItem) -> str:
+        """Absolute URL for uploaded photos; empty for legacy local paths (APK-only)."""
+        request = self.context.get("request")
+        raw = (obj.custom_photo_url or "").strip()
+        if not raw:
+            return ""
+        if raw.startswith("http://") or raw.startswith("https://"):
+            return raw
+        if raw.startswith("/media/"):
+            if request:
+                return request.build_absolute_uri(raw)
+            return raw
+        return ""
 
 
 class OrderLineReadSerializer(serializers.ModelSerializer):

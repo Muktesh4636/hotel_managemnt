@@ -37,6 +37,11 @@ class LoginView(APIView):
         user = authenticate(request, username=login_key, password=password)
         if user is None:
             user = authenticate(request, username=raw, password=password)
+        if user is None and login_key != raw.strip():
+            # e.g. DB username kept as 12-digit while client sends 10-digit after normalize
+            digits_only = "".join(ch for ch in raw if ch.isdigit())
+            if digits_only and digits_only != login_key:
+                user = authenticate(request, username=digits_only, password=password)
         if user is None or not user.is_active:
             return Response(
                 {"detail": "Invalid credentials or account disabled."},
@@ -92,5 +97,12 @@ def _normalize_login_id(raw: str) -> str:
         ch.isdigit() or ch in "+-() " for ch in t
     )
     if phone_like:
+        # India mobile: users often type +91XXXXXXXXXX; Django usernames are usually 10-digit.
+        if len(digits) == 12 and digits.startswith("91"):
+            return digits[2:]
+        if len(digits) == 11 and digits.startswith("0"):
+            rest = digits[1:]
+            if len(rest) == 10:
+                return rest
         return digits
     return t.lower()

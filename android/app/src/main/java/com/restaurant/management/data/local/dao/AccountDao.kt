@@ -18,4 +18,13 @@ interface AccountDao {
 
     @Insert
     suspend fun insert(account: AccountEntity): Long
+
+    @Query(
+        "UPDATE accounts SET passwordSaltB64 = :saltB64, passwordHashB64 = :hashB64 WHERE id = :id",
+    )
+    suspend fun updatePasswordHashes(
+        id: Long,
+        saltB64: String,
+        hashB64: String,
+    )
 }

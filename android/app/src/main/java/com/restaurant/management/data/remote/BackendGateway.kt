@@ -9,6 +9,7 @@ import com.restaurant.management.data.local.entity.StaffEntity
 import com.restaurant.management.model.KitchenLineStatus
 import com.restaurant.management.model.OrderStatus
 import com.restaurant.management.model.TableStatus
+import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -170,7 +171,7 @@ class BackendGateway(
             JSONObject()
                 .put("name", name.trim())
                 .put("category", category.trim().ifEmpty { "General" })
-                .put("price_cents", priceCents)
+                .put("price", priceCents)
                 .put("is_available", true)
                 .put("custom_photo_url", "")
         val resp = client.post("/api/v1/menu-items/", body.toString())
@@ -181,9 +182,22 @@ class BackendGateway(
         menuItemId: Long,
         localFilePath: String,
     ) {
-        client.patch(
-            "/api/v1/menu-items/$menuItemId/",
-            JSONObject().put("custom_photo_url", localFilePath).toString(),
+        val f = File(localFilePath)
+        if (!f.isFile) {
+            syncPull()
+            return
+        }
+        val mediaType =
+            when (f.extension.lowercase()) {
+                "png" -> "image/png"
+                "webp" -> "image/webp"
+                else -> "image/jpeg"
+            }
+        client.postMultipart(
+            "/api/v1/menu-items/$menuItemId/photo/",
+            "file",
+            f,
+            mediaType,
         )
         syncPull()
     }
@@ -200,7 +214,7 @@ class BackendGateway(
             JSONObject()
                 .put("name", name.trim())
                 .put("category", category.trim().ifEmpty { "General" })
-                .put("price_cents", priceCents)
+                .put("price", priceCents)
         when {
             clearCustomPhoto -> o.put("custom_photo_url", "")
             customPhotoUrl != null -> o.put("custom_photo_url", customPhotoUrl)

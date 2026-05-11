@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.pager.HorizontalPager
@@ -57,6 +58,10 @@ import kotlinx.coroutines.launch
 object CoreScreens {
     @Composable
     fun Dashboard(vm: RestaurantViewModel) {
+        val dashCtx = LocalContext.current.applicationContext
+        LaunchedEffect(Unit) {
+            vm.syncPullIfConnected(dashCtx)
+        }
         val stats by vm.dashboard.collectAsState()
         Column(
             modifier =
@@ -164,16 +169,23 @@ object CoreScreens {
 
     @Composable
     fun Pos(vm: RestaurantViewModel) {
+        val posCtx = LocalContext.current.applicationContext
         LaunchedEffect(Unit) {
             vm.setSelectedTable(null)
+            vm.syncPullIfConnected(posCtx)
         }
         val menu by vm.menu.collectAsState()
         val cart by vm.cart.collectAsState()
         val openOrders by vm.openOrders.collectAsState()
 
-        val categoryOrder =
+        val posMenu =
             remember(menu) {
-                menu.map { it.category }.distinct()
+                menu.filter { it.isAvailable }
+            }
+
+        val categoryOrder =
+            remember(posMenu) {
+                posMenu.map { it.category }.distinct()
             }
 
         val navCategories =
@@ -197,10 +209,10 @@ object CoreScreens {
         }
 
         val cartTotal =
-            remember(cart, menu) {
+            remember(cart, posMenu) {
+                val priceById = posMenu.associate { it.id to it.priceCents }
                 cart.entries.sumOf { (id, qty) ->
-                    val price = menu.find { it.id == id }?.priceCents ?: 0
-                    price * qty
+                    (priceById[id] ?: 0) * qty
                 }
             }
 
@@ -280,20 +292,21 @@ object CoreScreens {
                         Modifier
                             .weight(1f)
                             .fillMaxWidth(),
-                    beyondViewportPageCount = 1,
+                    /** Only lay out the visible category page so vertical fling stays smooth. */
+                    beyondViewportPageCount = 0,
                 ) { page ->
                     val pageCategory = navCategories.getOrNull(page)
                     val menuSections =
-                        remember(menu, pageCategory) {
+                        remember(posMenu, pageCategory) {
                             val sel = pageCategory
                             if (sel == null) {
-                                menu
+                                posMenu
                                     .groupBy { it.category }
                                     .mapNotNull { (cat, dishes) ->
                                         if (dishes.isEmpty()) null else cat to dishes
                                     }
                             } else {
-                                val dishes = menu.filter { it.category == sel }
+                                val dishes = posMenu.filter { it.category == sel }
                                 if (dishes.isEmpty()) emptyList() else listOf(sel to dishes)
                             }
                         }
@@ -311,8 +324,9 @@ object CoreScreens {
                                     modifier = Modifier.padding(top = 8.dp),
                                 )
                             }
-                            lazyItems(dishes, key = { "${page}_${it.id}" }) { item ->
-                                MenuRow(item, cart[item.id] ?: 0) { delta ->
+                            lazyItems(dishes, key = { it.id }) { item ->
+                                val qty = cart[item.id] ?: 0
+                                MenuRow(item, qty) { delta ->
                                     vm.addToCart(item.id, delta)
                                 }
                             }
@@ -379,27 +393,39 @@ object CoreScreens {
         qty: Int,
         onDelta: (Int) -> Unit,
     ) {
-        if (item.isAvailable) {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                MenuItemImageBadge(
-                    itemName = item.name,
-                    category = item.category,
-                    itemId = item.id,
-                    customPhotoPath = item.customPhotoPath,
-                )
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(item.name, fontWeight = FontWeight.Medium)
-                    Text(formatCents(item.priceCents), style = MaterialTheme.typography.bodySmall)
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            MenuItemImageBadge(
+                itemName = item.name,
+                category = item.category,
+                itemId = item.id,
+                customPhotoPath = item.customPhotoPath,
+                lightweightFrame = true,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(item.name, fontWeight = FontWeight.Medium)
+                Text(formatCents(item.priceCents), style = MaterialTheme.typography.bodySmall)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(
+                    onClick = { onDelta(-1) },
+                    enabled = qty > 0,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.height(40.dp),
+                ) {
+                    Text("−", style = MaterialTheme.typography.titleMedium)
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = { onDelta(-1) }, enabled = qty > 0) { Text("−") }
-                    Text("$qty", modifier = Modifier.padding(horizontal = 12.dp))
-                    OutlinedButton(onClick = { onDelta(1) }) { Text("+") }
+                Text("$qty", modifier = Modifier.padding(horizontal = 10.dp))
+                OutlinedButton(
+                    onClick = { onDelta(1) },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.height(40.dp),
+                ) {
+                    Text("+", style = MaterialTheme.typography.titleMedium)
                 }
             }
         }

@@ -1,5 +1,6 @@
 package com.restaurant.management.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,10 +25,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.restaurant.management.R
 import com.restaurant.management.ui.AuthViewModel
 
 @Composable
@@ -51,6 +55,16 @@ fun AuthScreens(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Image(
+            painter = painterResource(R.drawable.ic_brand_logo),
+            contentDescription = null,
+            modifier =
+                Modifier
+                    .padding(bottom = 8.dp)
+                    .height(112.dp)
+                    .fillMaxWidth(0.55f),
+            contentScale = ContentScale.Fit,
+        )
         Text(
             if (modeRegister) "Create account" else "Sign in",
             style = MaterialTheme.typography.headlineSmall,
@@ -61,7 +75,7 @@ fun AuthScreens(
             if (modeRegister) {
                 "Use your phone number or a username. Your data stays on this device, separate from other accounts."
             } else {
-                "Phone number or username, plus password."
+                "Same phone or username and password as the web CRM. Verifies with your server when online (needs internet)."
             },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

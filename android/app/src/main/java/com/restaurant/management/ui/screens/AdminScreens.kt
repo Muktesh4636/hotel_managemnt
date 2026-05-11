@@ -33,6 +33,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -75,11 +76,11 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.restaurant.management.data.local.entity.AccountEntity
 import com.restaurant.management.data.local.entity.AppSettingsEntity
+import com.restaurant.management.data.remote.ApiPrefs
 import com.restaurant.management.data.local.entity.ExpenseEntity
 import com.restaurant.management.data.local.entity.MenuItemEntity
 import com.restaurant.management.data.local.entity.InventoryEntity
@@ -87,7 +88,6 @@ import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
 import com.restaurant.management.RestaurantApplication
 import com.restaurant.management.model.orderStatusLabel
-import com.restaurant.management.data.remote.ApiPrefs
 import com.restaurant.management.data.RestaurantRepository
 import com.restaurant.management.R
 import com.restaurant.management.ui.Destinations
@@ -102,10 +102,7 @@ import com.restaurant.management.ui.util.centsToInrPlainInput
 import com.restaurant.management.ui.util.formatCents
 import com.restaurant.management.ui.util.hubRouteEnabled
 import com.restaurant.management.ui.util.modulesToJson
-import com.restaurant.management.ui.util.multilineToPipeList
 import com.restaurant.management.ui.util.parseModulesJson
-import com.restaurant.management.ui.util.parsePipeCategoryList
-import com.restaurant.management.ui.util.pipeListToMultiline
 import com.restaurant.management.ui.util.launchSubscriptionUpiPayment
 import com.restaurant.management.ui.util.resolvedExpenseCategories
 import com.restaurant.management.ui.util.subscriptionBillingUpiVpa
@@ -168,7 +165,7 @@ object AdminScreens {
         return if (p.isConfigured()) {
             val host = p.baseUrl.trimEnd('/')
             val short = if (host.length > 42) host.take(42) + "…" else host
-            "Pro — venue syncs with your Django server\n$short"
+            "Pro — venue syncs with your server\n$short"
         } else {
             "Standard — venue data on this device only (no cloud link)"
         }
@@ -454,110 +451,8 @@ object AdminScreens {
             Triple("Expenses", "Track operating costs and running total", Destinations.EXPENSES),
             Triple("Staff", "Salaries, absent days & roster", Destinations.STAFF),
             Triple("Reports", "Revenue, expenses, salaries & net profit", Destinations.REPORTS),
-            Triple("Tables & floor", "Layout, merge or split tables, floor status", Destinations.TABLES_FLOOR),
-            Triple("Reservations & waitlist", "Bookings, party size, time slots", Destinations.RESERVATIONS),
-            Triple("Suppliers & purchase orders", "Vendors, POs, receiving", Destinations.SUPPLIERS_PO),
-            Triple("Waste & spoilage", "Log shrink apart from sales", Destinations.WASTE_LOG),
-            Triple("Cash drawer & shifts", "Opening float, shift close summary", Destinations.CASH_DRAWER),
-            Triple("Customer feedback", "Notes linked to order or table", Destinations.CUSTOMER_FEEDBACK),
-            Triple("Global settings", "Menu categories, modules, tax & venue name", Destinations.SETTINGS),
+            Triple("Global settings", "Modules, tax & venue name", Destinations.SETTINGS),
         )
-
-    @Composable
-    private fun ModuleComingSoonScreen(
-        title: String,
-        subtitle: String,
-        body: String,
-    ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-        ) {
-            ScreenHeader(
-                title = title,
-                subtitle = subtitle,
-                accent = HeaderAccent.Tertiary,
-                decorationResId = R.drawable.decor_plate_meal,
-            )
-            Column(Modifier.padding(16.dp)) {
-                Text(
-                    "This area is reserved for a future release.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                )
-                Text(
-                    body,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-            }
-        }
-    }
-
-    @Composable
-    fun TablesFloor(vm: RestaurantViewModel) {
-        ModuleComingSoonScreen(
-            title = "Tables & floor",
-            subtitle = "Layout, merge or split, table status",
-            body =
-                "Enable this module under Global settings → Restaurant modules. " +
-                    "Later versions can add floor plans, merge/split checks, and live table status beyond POS.",
-        )
-    }
-
-    @Composable
-    fun Reservations(vm: RestaurantViewModel) {
-        ModuleComingSoonScreen(
-            title = "Reservations & waitlist",
-            subtitle = "Bookings, party size, time slots",
-            body =
-                "Turn on under Global settings when you are ready. " +
-                    "Future work: hold party size, slot booking, and waitlist queue.",
-        )
-    }
-
-    @Composable
-    fun SuppliersPurchaseOrders(vm: RestaurantViewModel) {
-        ModuleComingSoonScreen(
-            title = "Suppliers & purchase orders",
-            subtitle = "Vendors, POs, receiving",
-            body =
-                "Optional extension to inventory. When built out: vendor list, purchase orders, and goods received.",
-        )
-    }
-
-    @Composable
-    fun WasteSpoilageLog(vm: RestaurantViewModel) {
-        ModuleComingSoonScreen(
-            title = "Waste & spoilage",
-            subtitle = "Shrink apart from sales",
-            body =
-                "Log spoilage and waste separately from normal stock deductions so reports stay clear.",
-        )
-    }
-
-    @Composable
-    fun CashDrawerShifts(vm: RestaurantViewModel) {
-        ModuleComingSoonScreen(
-            title = "Cash drawer & shifts",
-            subtitle = "Opening float, shift close",
-            body =
-                "Planned: opening float, counted close, and a Z-read style summary alongside Reports.",
-        )
-    }
-
-    @Composable
-    fun CustomerFeedback(vm: RestaurantViewModel) {
-        ModuleComingSoonScreen(
-            title = "Customer feedback",
-            subtitle = "Orders and tables",
-            body =
-                "Planned: simple complaint and praise log with optional link to an order or table number.",
-        )
-    }
 
     @Composable
     fun Hub(
@@ -706,6 +601,10 @@ object AdminScreens {
 
     @Composable
     fun MenuAdmin(vm: RestaurantViewModel) {
+        val menuCtx = LocalContext.current.applicationContext
+        LaunchedEffect(Unit) {
+            vm.syncPullIfConnected(menuCtx)
+        }
         val menu by vm.menu.collectAsState()
         val s by vm.settings.collectAsState()
         val menuCats = remember(s?.menuCategories) { resolvedMenuCategories(s?.menuCategories) }
@@ -906,10 +805,7 @@ object AdminScreens {
                             )
                             Box(modifier = Modifier.fillMaxWidth()) {
                                 OutlinedTextField(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .clickable { editCategoryExpanded = true },
+                                    modifier = Modifier.fillMaxWidth(),
                                     readOnly = true,
                                     value = editCategory,
                                     onValueChange = {},
@@ -920,6 +816,14 @@ object AdminScreens {
                                             contentDescription = null,
                                         )
                                     },
+                                )
+                                Box(
+                                    Modifier
+                                        .matchParentSize()
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                        ) { editCategoryExpanded = true },
                                 )
                                 DropdownMenu(
                                     expanded = editCategoryExpanded,
@@ -1057,17 +961,14 @@ object AdminScreens {
                         modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                     )
                     Text(
-                        "Add each category on its own line under Global settings, then Save. All saved categories appear in the list below.",
+                        "Tap the field and pick a category from your menu (same names as the category tabs above).",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 6.dp),
                     )
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable { addCategoryExpanded = true },
+                            modifier = Modifier.fillMaxWidth(),
                             readOnly = true,
                             value = category,
                             onValueChange = {},
@@ -1078,6 +979,14 @@ object AdminScreens {
                                     contentDescription = null,
                                 )
                             },
+                        )
+                        Box(
+                            Modifier
+                                .matchParentSize()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) { addCategoryExpanded = true },
                         )
                         DropdownMenu(
                             expanded = addCategoryExpanded,
@@ -2282,6 +2191,61 @@ object AdminScreens {
         ) {
             Column(Modifier.padding(16.dp)) {
                 Text(
+                    "Orders and income (this period)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = onPrimary,
+                )
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "Orders received",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = onPrimary.copy(alpha = 0.9f),
+                        )
+                        Text(
+                            "${summary.totalOrderCount}",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = onPrimary,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        Text(
+                            "all tickets",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = onPrimary.copy(alpha = 0.82f),
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "Paid income",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = onPrimary.copy(alpha = 0.9f),
+                        )
+                        Text(
+                            formatCents(summary.paidRevenueCents),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = onPrimary,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        Text(
+                            "${summary.paidOrderCount} paid orders",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = onPrimary.copy(alpha = 0.82f),
+                        )
+                    }
+                }
+                HorizontalDivider(
+                    Modifier.padding(vertical = 14.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
+                )
+                Text(
                     "Financial summary",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
@@ -2452,6 +2416,23 @@ object AdminScreens {
                     showMonthPicker = showMonthPicker,
                     onShowMonthPicker = { showMonthPicker = it },
                     monthChoices = monthChoices,
+                )
+
+                Text(
+                    text =
+                        if (useCustomRange) {
+                            if (customFrom.isBlank() || customTo.isBlank()) {
+                                "Custom range: enter YYYY-MM-DD and tap Apply."
+                            } else {
+                                "Custom range: $customFrom through $customTo"
+                            }
+                        } else {
+                            "Calendar month: ${formatMonthYear(selectedYm)}"
+                        },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -3011,34 +2992,17 @@ object AdminScreens {
         var venue by remember(s?.venueName) { mutableStateOf(s?.venueName ?: "") }
         var tax by remember(s?.taxPercent) { mutableStateOf(s?.taxPercent?.toString() ?: "5") }
         var svc by remember(s?.serviceChargePercent) { mutableStateOf(s?.serviceChargePercent?.toString() ?: "0") }
-        var menuCatText by remember { mutableStateOf("") }
-        val menuCategoryPreview =
-            remember(menuCatText) {
-                parsePipeCategoryList(multilineToPipeList(menuCatText), emptyList())
-            }
         var modules by remember(s?.modulesJson) { mutableStateOf(parseModulesJson(s?.modulesJson)) }
-        val apiPrefs = remember { ApiPrefs(app) }
-        var backendUrl by remember { mutableStateOf(apiPrefs.baseUrl) }
-        var backendLogin by remember { mutableStateOf("") }
-        var backendPassword by remember { mutableStateOf("") }
-        var backendStatus by remember { mutableStateOf("") }
 
         LaunchedEffect(s) {
             venue = s?.venueName ?: ""
             tax = s?.taxPercent?.toString() ?: "5"
             svc = s?.serviceChargePercent?.toString() ?: "0"
-            menuCatText = pipeListToMultiline(s?.menuCategories)
             modules = parseModulesJson(s?.modulesJson)
         }
 
         LaunchedEffect(Unit) {
-            backendUrl = apiPrefs.baseUrl
-            backendStatus =
-                if (apiPrefs.isConfigured()) {
-                    "Connected to ${apiPrefs.baseUrl}"
-                } else {
-                    ""
-                }
+            vm.syncPullIfConnected(app)
         }
 
         Column(
@@ -3049,7 +3013,7 @@ object AdminScreens {
         ) {
             ScreenHeader(
                 title = "Global settings",
-                subtitle = "Venue, menu categories & modules",
+                subtitle = "Venue, tax & modules",
                 accent = HeaderAccent.Tertiary,
                 decorationResId = R.drawable.decor_plate_meal,
             )
@@ -3067,7 +3031,7 @@ object AdminScreens {
                             taxPercent = t,
                             serviceChargePercent = sc,
                             qrMenuToken = s?.qrMenuToken ?: "",
-                            menuCategories = multilineToPipeList(menuCatText),
+                            menuCategories = s?.menuCategories ?: "",
                             expenseCategories = s?.expenseCategories ?: "",
                             modulesJson = modulesToJson(modules),
                         ),
@@ -3097,82 +3061,6 @@ object AdminScreens {
                     color = MaterialTheme.colorScheme.outlineVariant,
                 )
                 Text(
-                    "Menu categories (POS / menu admin)",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
-                Text(
-                    "Add one category per line. Use Save menu categories below to store them on this device — " +
-                        "they stay in this list and show in the preview. You do not need the bottom Save for categories only.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                OutlinedTextField(
-                    value = menuCatText,
-                    onValueChange = { menuCatText = it },
-                    label = { Text("Categories (one per line)") },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 120.dp),
-                    minLines = 4,
-                )
-                Button(
-                    onClick = {
-                        persistGlobalSettingsForm()
-                        Toast.makeText(context, "Menu categories saved", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 10.dp),
-                ) {
-                    Text("Save menu categories")
-                }
-                Text(
-                    "Categories in your list (${menuCategoryPreview.size})",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-                )
-                if (menuCategoryPreview.isEmpty()) {
-                    Text(
-                        "No names yet — type above, then tap Save menu categories.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp),
-                    ) {
-                        items(menuCategoryPreview, key = { it }) { cat ->
-                            Card(
-                                colors =
-                                    CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    ),
-                            ) {
-                                Text(
-                                    cat,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                            }
-                        }
-                    }
-                }
-                HorizontalDivider(
-                    Modifier.padding(vertical = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                )
-                Text(
                     "Restaurant modules",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
@@ -3180,8 +3068,7 @@ object AdminScreens {
                 )
                 Text(
                     "Turn off what you do not use — hidden from Operations and the Kitchen tab. " +
-                        "Reports, Order history, and Global settings always stay listed. " +
-                        "Optional extensions below are off until you turn them on; each opens a placeholder screen until that feature ships.",
+                        "Reports, Order history, and Global settings always stay listed.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -3251,231 +3138,6 @@ object AdminScreens {
                         onCheckedChange = { modules = modules.copy(expenses = it) },
                     )
                 }
-                Text(
-                    "Optional extensions (Operations)",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
-                )
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Tables & floor")
-                        Text(
-                            "Layout, merge/split, status",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = modules.tablesFloor,
-                        onCheckedChange = { modules = modules.copy(tablesFloor = it) },
-                    )
-                }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Reservations / waitlist")
-                        Text(
-                            "Bookings, party size, slots",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = modules.reservations,
-                        onCheckedChange = { modules = modules.copy(reservations = it) },
-                    )
-                }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Suppliers & purchase orders")
-                        Text(
-                            "Vendors, POs, receiving",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = modules.suppliersPo,
-                        onCheckedChange = { modules = modules.copy(suppliersPo = it) },
-                    )
-                }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Waste & spoilage log")
-                        Text(
-                            "Shrink outside sales",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = modules.wasteLog,
-                        onCheckedChange = { modules = modules.copy(wasteLog = it) },
-                    )
-                }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Cash drawer / shift close")
-                        Text(
-                            "Float, Z-read style summary",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = modules.cashDrawer,
-                        onCheckedChange = { modules = modules.copy(cashDrawer = it) },
-                    )
-                }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Customer feedback / complaints")
-                        Text(
-                            "Linked to order or table",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = modules.customerFeedback,
-                        onCheckedChange = { modules = modules.copy(customerFeedback = it) },
-                    )
-                }
-                HorizontalDivider(
-                    Modifier.padding(vertical = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                )
-                Text(
-                    "Django backend",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
-                Text(
-                    "Optional: sync this venue with your Django server (same login as the web API). " +
-                        "Use your machine IP or emulator loopback (e.g. http://10.0.2.2:8000).",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                OutlinedTextField(
-                    value = backendUrl,
-                    onValueChange = { backendUrl = it },
-                    label = { Text("Server base URL") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = backendLogin,
-                    onValueChange = { backendLogin = it },
-                    label = { Text("Django username or phone") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-                OutlinedTextField(
-                    value = backendPassword,
-                    onValueChange = { backendPassword = it },
-                    label = { Text("Password") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                )
-                if (backendStatus.isNotBlank()) {
-                    Text(
-                        backendStatus,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                }
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Button(
-                        onClick = {
-                            vm.connectBackend(app, backendUrl, backendLogin, backendPassword) { ok, msg ->
-                                backendStatus = msg
-                                if (ok) {
-                                    backendPassword = ""
-                                    Toast.makeText(app, msg, Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(app, msg, Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("Connect")
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            vm.syncBackendNow(app) { ok, msg ->
-                                backendStatus = msg
-                                Toast.makeText(
-                                    app,
-                                    msg,
-                                    if (ok) Toast.LENGTH_SHORT else Toast.LENGTH_LONG,
-                                ).show()
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text("Sync now")
-                    }
-                }
-                OutlinedButton(
-                    onClick = {
-                        vm.disconnectBackend(app)
-                        backendStatus = "Disconnected"
-                        Toast.makeText(app, "Backend disconnected", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                ) {
-                    Text("Disconnect backend")
-                }
                 Button(
                     onClick = {
                         persistGlobalSettingsForm()
@@ -3494,17 +3156,6 @@ object AdminScreens {
                 ) {
                     Text("Sign out")
                 }
-                Text(
-                    "Sign out to switch account. Each account has its own data on this device.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                Text(
-                    "Leave the category box empty to use built-in defaults in POS. Amounts are INR (₹).",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 16.dp),
-                )
             }
         }
     }

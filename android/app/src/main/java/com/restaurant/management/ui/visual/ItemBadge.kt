@@ -1,6 +1,8 @@
 package com.restaurant.management.ui.visual
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +32,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.restaurant.management.R
 import java.io.File
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -50,6 +55,71 @@ private fun accentIndexForId(id: Long): Int {
     return m.toInt()
 }
 
+/** List-row thumbnails: small decoded bitmaps, reused while scrolling POS / menus. */
+private const val MENU_THUMB_MAX_SIDE = 256
+
+private val menuThumbImageCache =
+    object : LruCache<String, ImageBitmap>(48) {}
+
+private fun computeInSampleSize(
+    opts: BitmapFactory.Options,
+    maxSide: Int,
+): Int {
+    val height = opts.outHeight
+    val width = opts.outWidth
+    if (width <= 0 || height <= 0) return 1
+    var inSampleSize = 1
+    if (height > maxSide || width > maxSide) {
+        val halfHeight = height / 2
+        val halfWidth = width / 2
+        while (halfHeight / inSampleSize > maxSide || halfWidth / inSampleSize > maxSide) {
+            inSampleSize *= 2
+        }
+    }
+    return inSampleSize.coerceAtLeast(1)
+}
+
+private fun decodeBitmapSampledFromFile(path: String): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    val opts =
+        BitmapFactory.Options().apply {
+            inSampleSize = computeInSampleSize(bounds, MENU_THUMB_MAX_SIDE)
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+    return BitmapFactory.decodeFile(path, opts)
+}
+
+private fun decodeBitmapSampledFromNetworkStream(stream: InputStream): Bitmap? {
+    val bytes = stream.use { it.readBytes() }
+    if (bytes.isEmpty() || bytes.size > 4 * 1024 * 1024) return null
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    val opts =
+        BitmapFactory.Options().apply {
+            inSampleSize = computeInSampleSize(bounds, MENU_THUMB_MAX_SIDE)
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+}
+
+private fun decodeMenuThumbBitmap(path: String): Bitmap? =
+    when {
+        path.startsWith("http://") || path.startsWith("https://") ->
+            runCatching {
+                val conn = URL(path).openConnection() as HttpURLConnection
+                conn.connectTimeout = 12000
+                conn.readTimeout = 20000
+                conn.inputStream.use { decodeBitmapSampledFromNetworkStream(it) }
+            }.getOrNull()
+        else -> {
+            val f = File(path)
+            if (f.exists()) decodeBitmapSampledFromFile(path) else null
+        }
+    }
+
 @Composable
 private fun ResolvedMenuItemImage(
     itemName: String,
@@ -64,15 +134,23 @@ private fun ResolvedMenuItemImage(
         }
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(customPhotoPath) {
-        bitmap =
-            if (customPhotoPath.isNullOrBlank()) {
-                null
-            } else {
-                withContext(Dispatchers.IO) {
-                    val f = File(customPhotoPath)
-                    if (f.exists()) BitmapFactory.decodeFile(customPhotoPath)?.asImageBitmap() else null
+        val p = customPhotoPath?.trim().orEmpty()
+        if (p.isEmpty()) {
+            bitmap = null
+            return@LaunchedEffect
+        }
+        val cached = menuThumbImageCache.get(p)
+        if (cached != null) {
+            bitmap = cached
+            return@LaunchedEffect
+        }
+        val decoded =
+            withContext(Dispatchers.IO) {
+                decodeMenuThumbBitmap(p)?.asImageBitmap()?.also { img ->
+                    menuThumbImageCache.put(p, img)
                 }
             }
+        bitmap = decoded
     }
     val b = bitmap
     if (b != null) {
@@ -186,6 +264,8 @@ fun MenuItemImageBadge(
     itemId: Long,
     customPhotoPath: String? = null,
     modifier: Modifier = Modifier,
+    /** Softer GPU work while flinging long POS lists (solid frame instead of gradient). */
+    lightweightFrame: Boolean = false,
 ) {
     val ring = AccentRingColors[accentIndexForId(itemId)]
     Box(
@@ -193,15 +273,29 @@ fun MenuItemImageBadge(
             modifier
                 .size(52.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(
-                    brush =
-                        Brush.linearGradient(
-                            colors =
-                                listOf(
-                                    ring.copy(alpha = 0.55f),
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                .then(
+                    if (lightweightFrame) {
+                        Modifier.background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f),
+                            shape = RoundedCornerShape(14.dp),
+                        ).border(
+                            width = 1.dp,
+                            color = ring.copy(alpha = 0.45f),
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                    } else {
+                        Modifier.background(
+                            brush =
+                                Brush.linearGradient(
+                                    colors =
+                                        listOf(
+                                            ring.copy(alpha = 0.55f),
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.35f),
+                                        ),
                                 ),
-                        ),
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                    },
                 )
                 .padding(4.dp),
         contentAlignment = Alignment.Center,

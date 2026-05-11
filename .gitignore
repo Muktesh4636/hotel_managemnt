@@ -19,3 +19,6 @@ backend/db.sqlite3
 *.keystore
 .env
 .env.*
+
+# Built app binary for web download (copy before deploy; see backend/venue/static/venue/downloads/README.txt)
+backend/venue/static/venue/downloads/*.apk

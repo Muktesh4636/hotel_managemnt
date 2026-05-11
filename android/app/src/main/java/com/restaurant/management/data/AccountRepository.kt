@@ -3,7 +3,12 @@ package com.restaurant.management.data
 import android.content.Context
 import com.restaurant.management.data.local.dao.AccountDao
 import com.restaurant.management.data.local.entity.AccountEntity
+import com.restaurant.management.data.remote.ApiPrefs
+import com.restaurant.management.data.remote.DjangoApiClient
 import com.restaurant.management.security.PasswordHasher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 class AccountRepository(
     private val accountDao: AccountDao,
@@ -34,7 +39,13 @@ class AccountRepository(
                 t.all { ch ->
                     ch.isDigit() || ch == '+' || ch == ' ' || ch == '-' || ch == '(' || ch == ')'
                 }
-        return if (phoneLike) digits else t.lowercase()
+        if (!phoneLike) return t.lowercase()
+        if (digits.length == 12 && digits.startsWith("91")) return digits.drop(2)
+        if (digits.length == 11 && digits.startsWith("0")) {
+            val rest = digits.drop(1)
+            if (rest.length == 10) return rest
+        }
+        return digits
     }
 
     suspend fun register(
@@ -97,6 +108,62 @@ class AccountRepository(
             )
         return if (ok) acc.id else null
     }
+
+    /**
+     * Same sign-in as the web CRM: try Django `/api/v1/auth/login/` first, then fall back to the
+     * on-device account DB. On API success, saves the API token and creates or updates the local
+     * staff row so [openRestaurantForUser] can run.
+     */
+    suspend fun verifyLoginWithBackendThenLocal(
+        loginRaw: String,
+        password: String,
+    ): Long? =
+        withContext(Dispatchers.IO) {
+            val loginId = normalizeLoginId(loginRaw)
+            if (loginId.isBlank() || password.isBlank()) return@withContext null
+            val prefs = ApiPrefs(appContext)
+            val baseUrl = prefs.baseUrl.trimEnd('/')
+            if (baseUrl.isBlank()) return@withContext verifyLogin(loginRaw, password)
+
+            try {
+                val body = DjangoApiClient.login(baseUrl, loginRaw, password)
+                val token = JSONObject(body).getString("token")
+                prefs.token = token
+
+                val existing = accountDao.getByLoginId(loginId)
+                if (existing != null) {
+                    val salt = PasswordHasher.newSalt()
+                    val hash = PasswordHasher.hash(password.toCharArray(), salt)
+                    accountDao.updatePasswordHashes(
+                        existing.id,
+                        PasswordHasher.encodeB64(salt),
+                        PasswordHasher.encodeB64(hash),
+                    )
+                    return@withContext existing.id
+                }
+                val reg = register(loginRaw, password)
+                reg.fold(
+                    onSuccess = { return@withContext it },
+                    onFailure = {
+                        val again = accountDao.getByLoginId(loginId)
+                        if (again != null) {
+                            val salt = PasswordHasher.newSalt()
+                            val hash = PasswordHasher.hash(password.toCharArray(), salt)
+                            accountDao.updatePasswordHashes(
+                                again.id,
+                                PasswordHasher.encodeB64(salt),
+                                PasswordHasher.encodeB64(hash),
+                            )
+                            return@withContext again.id
+                        }
+                        return@withContext null
+                    },
+                )
+            } catch (_: Exception) {
+                // Offline or wrong server password — try local-only account
+            }
+            verifyLogin(loginRaw, password)
+        }
 
     companion object {
         private const val PREFS_NAME = "restaurant_session"

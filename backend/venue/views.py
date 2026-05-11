@@ -1,7 +1,11 @@
+from pathlib import Path
+
+from django.conf import settings as django_settings
 from django.db import transaction
 from django.utils import timezone
-from rest_framework import viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -50,6 +54,37 @@ class VenueTableViewSet(OwnerScopedViewSet):
 class MenuItemViewSet(OwnerScopedViewSet):
     queryset = MenuItem.objects.all()
     serializer_class = MenuItemSerializer
+
+    @action(
+        detail=True,
+        methods=["post"],
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def photo(self, request, pk=None):
+        """Upload a JPEG/PNG/WebP; stored under MEDIA and exposed via image_url on sync."""
+        item = self.get_object()
+        up = request.FILES.get("file") or request.FILES.get("photo")
+        if not up:
+            return Response(
+                {"detail": "Multipart field 'file' or 'photo' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ext = Path(up.name).suffix.lower() or ".jpg"
+        if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+            ext = ".jpg"
+        user_dir = Path(django_settings.MEDIA_ROOT) / "menu_photos" / str(request.user.id)
+        user_dir.mkdir(parents=True, exist_ok=True)
+        dest = user_dir / f"{item.id}{ext}"
+        with dest.open("wb") as f:
+            for chunk in up.chunks():
+                f.write(chunk)
+        rel = f"/media/menu_photos/{request.user.id}/{item.id}{ext}"
+        item.custom_photo_url = rel
+        item.save(update_fields=["custom_photo_url"])
+        return Response(
+            MenuItemSerializer(item, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )
 
 
 class VenueOrderViewSet(OwnerScopedViewSet):
@@ -143,7 +178,7 @@ def sync_full(request):
     return Response(
         {
             "tables": VenueTableSerializer(tables, many=True).data,
-            "menu_items": MenuItemSerializer(menu, many=True).data,
+            "menu_items": MenuItemSerializer(menu, many=True, context={"request": request}).data,
             "orders": [order_dict(o) for o in orders],
             "inventory": InventoryItemSerializer(inv, many=True).data,
             "staff": StaffMemberSerializer(staff, many=True).data,

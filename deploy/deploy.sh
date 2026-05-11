@@ -102,6 +102,7 @@ run_rsync \
   --exclude '.pytest_cache' \
   --exclude '.env' \
   --exclude 'staticfiles' \
+  --exclude 'media' \
   "$REPO_ROOT/backend/" "${TARGET}:${DEPLOY_APP_ROOT}/backend/"
 
 echo "==> Rsync deploy/..."
@@ -114,6 +115,15 @@ echo "==> Run remote install..."
 INST=$(remote_install_cmd)
 echo "    $INST"
 run_ssh "$INST"
+
+# Optional: create/update Django user for web + APK login (same DB as production API).
+# Set in deploy/.env.deploy: PROVISION_DJANGO_USER and PROVISION_DJANGO_PASSWORD (password ≥ 6 chars).
+if [[ -n "${PROVISION_DJANGO_USER:-}" && -n "${PROVISION_DJANGO_PASSWORD:-}" ]]; then
+  echo "==> Provisioning Django API user: ${PROVISION_DJANGO_USER}"
+  _pu=$(printf %q "$PROVISION_DJANGO_USER")
+  _pp=$(printf %q "$PROVISION_DJANGO_PASSWORD")
+  run_ssh "cd '${DEPLOY_APP_ROOT}/backend' && . .venv/bin/activate && python manage.py create_signin_user ${_pu} ${_pp}"
+fi
 
 echo ""
 echo "==> Deploy finished."

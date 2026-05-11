@@ -2,12 +2,15 @@ package com.restaurant.management.data.remote
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.concurrent.TimeUnit
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.util.concurrent.TimeUnit
 
 class DjangoApiClient(
     private val baseUrl: String,
@@ -68,6 +71,39 @@ class DjangoApiClient(
                     .Builder()
                     .url(url(path))
                     .post(jsonBody.toRequestBody(jsonMedia))
+                    .withAuth()
+                    .build()
+            client.newCall(req).execute().use { resp ->
+                val body = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    throw ApiException(resp.code, body)
+                }
+                body
+            }
+        }
+
+    suspend fun postMultipart(
+        path: String,
+        fieldName: String,
+        file: File,
+        mediaType: String,
+    ): String =
+        withContext(Dispatchers.IO) {
+            val part =
+                MultipartBody
+                    .Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart(
+                        fieldName,
+                        file.name,
+                        file.asRequestBody(mediaType.toMediaType()),
+                    )
+                    .build()
+            val req =
+                Request
+                    .Builder()
+                    .url(url(path))
+                    .post(part)
                     .withAuth()
                     .build()
             client.newCall(req).execute().use { resp ->

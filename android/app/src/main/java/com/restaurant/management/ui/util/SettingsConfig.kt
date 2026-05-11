@@ -54,13 +54,6 @@ data class ModuleFlags(
     val inventory: Boolean = true,
     val staff: Boolean = true,
     val expenses: Boolean = true,
-    /** Optional modules (default off until enabled in Global settings). */
-    val tablesFloor: Boolean = false,
-    val reservations: Boolean = false,
-    val suppliersPo: Boolean = false,
-    val wasteLog: Boolean = false,
-    val cashDrawer: Boolean = false,
-    val customerFeedback: Boolean = false,
 )
 
 fun parseModulesJson(raw: String?): ModuleFlags {
@@ -74,12 +67,6 @@ fun parseModulesJson(raw: String?): ModuleFlags {
             inventory = o.optBoolean("inventory", true),
             staff = o.optBoolean("staff", true),
             expenses = o.optBoolean("expenses", true),
-            tablesFloor = o.optBoolean("tablesFloor", false),
-            reservations = o.optBoolean("reservations", false),
-            suppliersPo = o.optBoolean("suppliersPo", false),
-            wasteLog = o.optBoolean("wasteLog", false),
-            cashDrawer = o.optBoolean("cashDrawer", false),
-            customerFeedback = o.optBoolean("customerFeedback", false),
         )
     } catch (_: Exception) {
         ModuleFlags()
@@ -93,12 +80,6 @@ fun modulesToJson(flags: ModuleFlags): String =
         put("inventory", flags.inventory)
         put("staff", flags.staff)
         put("expenses", flags.expenses)
-        put("tablesFloor", flags.tablesFloor)
-        put("reservations", flags.reservations)
-        put("suppliersPo", flags.suppliersPo)
-        put("wasteLog", flags.wasteLog)
-        put("cashDrawer", flags.cashDrawer)
-        put("customerFeedback", flags.customerFeedback)
     }.toString()
 
 fun hubRouteEnabled(
@@ -115,11 +96,5 @@ fun hubRouteEnabled(
         Destinations.INVENTORY -> flags.inventory
         Destinations.EXPENSES -> flags.expenses
         Destinations.STAFF -> flags.staff
-        Destinations.TABLES_FLOOR -> flags.tablesFloor
-        Destinations.RESERVATIONS -> flags.reservations
-        Destinations.SUPPLIERS_PO -> flags.suppliersPo
-        Destinations.WASTE_LOG -> flags.wasteLog
-        Destinations.CASH_DRAWER -> flags.cashDrawer
-        Destinations.CUSTOMER_FEEDBACK -> flags.customerFeedback
         else -> true
     }

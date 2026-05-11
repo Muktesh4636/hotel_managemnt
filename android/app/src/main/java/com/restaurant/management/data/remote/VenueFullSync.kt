@@ -69,9 +69,16 @@ object VenueFullSync {
                                 id = o.getLong("id"),
                                 name = o.getString("name"),
                                 category = o.getString("category"),
-                                priceCents = o.getInt("price_cents"),
+                                priceCents =
+                                    if (o.has("price")) {
+                                        o.getInt("price")
+                                    } else {
+                                        o.optInt("price_cents", 0)
+                                    },
                                 isAvailable = o.optBoolean("is_available", true),
-                                customPhotoPath = o.optString("custom_photo_url").ifBlank { null },
+                                customPhotoPath =
+                                    o.optString("image_url").ifBlank { null }
+                                        ?: o.optString("custom_photo_url").ifBlank { null },
                             ),
                         )
                     }

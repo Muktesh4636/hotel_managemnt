@@ -4,4 +4,6 @@
     <!-- Matches Compose background for splash / system bars -->
     <color name="app_background">#FFFFFBF7</color>
     <color name="surface_light">#FFFFFFFF</color>
+    <!-- Launcher / splash behind brand mark (cream, matches logo canvas) -->
+    <color name="ic_launcher_background">#F5F2EE</color>
 </resources>

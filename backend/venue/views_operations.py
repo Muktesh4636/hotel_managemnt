@@ -8,7 +8,7 @@ import urllib.parse
 from django.conf import settings
 from django.shortcuts import render
 
-# Same order and copy as AdminScreens.hubEntriesAll (Destinations slug for future deep links).
+# Same order and copy as AdminScreens.hubEntriesAll (slug matches web workspace paths).
 OPERATIONS_ENTRIES = [
     {
         "slug": "orders",
@@ -46,39 +46,9 @@ OPERATIONS_ENTRIES = [
         "subtitle": "Revenue, expenses, salaries & net profit",
     },
     {
-        "slug": "tables_floor",
-        "title": "Tables & floor",
-        "subtitle": "Layout, merge or split tables, floor status",
-    },
-    {
-        "slug": "reservations",
-        "title": "Reservations & waitlist",
-        "subtitle": "Bookings, party size, time slots",
-    },
-    {
-        "slug": "suppliers_po",
-        "title": "Suppliers & purchase orders",
-        "subtitle": "Vendors, POs, receiving",
-    },
-    {
-        "slug": "waste_log",
-        "title": "Waste & spoilage",
-        "subtitle": "Log shrink apart from sales",
-    },
-    {
-        "slug": "cash_drawer",
-        "title": "Cash drawer & shifts",
-        "subtitle": "Opening float, shift close summary",
-    },
-    {
-        "slug": "customer_feedback",
-        "title": "Customer feedback",
-        "subtitle": "Notes linked to order or table",
-    },
-    {
         "slug": "settings",
         "title": "Global settings",
-        "subtitle": "Menu categories, modules, tax & venue name",
+        "subtitle": "Modules, tax & venue name",
     },
 ]
 

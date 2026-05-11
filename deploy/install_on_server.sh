@@ -26,6 +26,7 @@ apt-get update -qq
 apt-get install -y -qq python3-venv python3-pip nginx rsync
 
 install -d -m 755 "${STATIC}"
+install -d -m 755 "${BACKEND}/media/menu_photos"
 
 if [[ ! -d "${VENV}" ]]; then
   python3 -m venv "${VENV}"
@@ -33,7 +34,7 @@ fi
 "${VENV}/bin/pip" install --upgrade pip
 "${VENV}/bin/pip" install -r "${BACKEND}/requirements.txt"
 
-chown -R www-data:www-data "${BACKEND}" "${STATIC}"
+chown -R www-data:www-data "${BACKEND}" "${STATIC}" "${BACKEND}/media"
 
 sudo -u www-data bash -c "
   set -a

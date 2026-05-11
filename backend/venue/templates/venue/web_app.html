@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  {% load static %}
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#b84732" />
@@ -13,6 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
   <title>Restaurant CRM</title>
+  <script>window.FOOD_STATIC_BASE = "{{ food_static_base|escapejs }}";</script>
+  <script src="{% static 'venue/js/menu_food_photo.js' %}"></script>
   <style>
     :root {
       --cream: #f5f2ee;
@@ -239,6 +242,35 @@
     }
     .sidebar-ops-btn:hover { background: var(--surface-2); color: var(--ink); }
     .sidebar-ops-btn.on { background: var(--primary-container); color: var(--primary); }
+    .sidebar-download {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 12px 10px 4px;
+      padding: 11px 12px;
+      border-radius: var(--r-sm);
+      border: 1px dashed var(--outline);
+      background: var(--surface-2);
+      color: var(--secondary-deep);
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .sidebar-download:hover {
+      background: var(--secondary-container);
+      border-color: rgba(45, 90, 71, 0.35);
+      color: var(--on-secondary-container);
+    }
+    .sidebar-download svg {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      opacity: 0.92;
+      fill: currentColor;
+    }
     .sidebar-foot { padding: 12px 10px 16px; border-top: 1px solid var(--outline-variant); }
     .sidebar-logout {
       width: 100%;
@@ -311,18 +343,6 @@
       flex-direction: column;
       gap: 20px;
     }
-    @media (min-width: 900px) {
-      .dash-layout {
-        display: grid;
-        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-        grid-template-rows: auto 1fr;
-        gap: 20px 24px;
-        align-items: start;
-      }
-      .dash-hero-slot { grid-column: 1; grid-row: 1 / span 2; }
-      .dash-stats-slot { grid-column: 2; grid-row: 1; }
-      .dash-below-slot { grid-column: 2; grid-row: 2; }
-    }
     .dash-stats-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -333,36 +353,6 @@
     }
     .dash-below-slot .hint { margin-top: 0; }
     .btn-seed { margin-top: 12px; width: 100%; max-width: 320px; }
-    .hero {
-      background: var(--surface);
-      border: 1px solid var(--outline-variant);
-      border-radius: var(--r-md);
-      padding: 18px 18px 18px 20px;
-      margin-bottom: 16px;
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-      box-shadow: var(--shadow-sm);
-      border-left: 4px solid var(--primary);
-    }
-    .hero-icon {
-      flex-shrink: 0;
-      width: 44px; height: 44px;
-      border-radius: 12px;
-      background: var(--primary-container);
-      color: var(--primary);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .hero h2 { margin: 0; font-size: 1.0625rem; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
-    .hero-dash h2 { font-size: 1.35rem; letter-spacing: -0.03em; }
-    .dash-kicker {
-      font-size: 0.6875rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--primary);
-      margin: 0 0 4px;
-    }
     .dash-metrics-title {
       font-size: 0.75rem;
       font-weight: 700;
@@ -385,6 +375,287 @@
     .stat .lbl { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
     .stat .val { font-size: 1.5rem; font-weight: 700; margin-top: 6px; color: var(--ink); letter-spacing: -0.03em; }
     .dash-stats-grid .stat { margin-bottom: 0; }
+    .stat.s3 { border-left: 3px solid #78716c; }
+    .dash-charts-section {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--outline-variant);
+    }
+    .dash-charts-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    @media (min-width: 720px) {
+      .dash-charts-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (min-width: 1024px) {
+      .dash-charts-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--r-md);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-sm);
+      min-height: 0;
+    }
+    .chart-card-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      margin: 0 0 14px;
+      color: var(--ink);
+      letter-spacing: -0.02em;
+    }
+    .chart-body { min-height: 120px; }
+    .hbar-row {
+      display: grid;
+      grid-template-columns: minmax(0, 52px) 1fr minmax(0, 64px);
+      align-items: center;
+      gap: 8px 10px;
+      margin-bottom: 10px;
+      font-size: 0.6875rem;
+      color: var(--muted);
+    }
+    .hbar-row:last-child { margin-bottom: 0; }
+    .hbar-lbl { font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hbar-val { text-align: right; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .hbar-track {
+      height: 11px;
+      background: var(--outline-variant);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .hbar-fill {
+      height: 100%;
+      min-width: 0;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--primary-deep) 100%);
+      transition: width 0.35s ease;
+    }
+    .hbar-fill.sec {
+      background: linear-gradient(90deg, var(--secondary) 0%, var(--secondary-deep) 100%);
+    }
+    .hbar-fill.ter {
+      background: linear-gradient(90deg, var(--tertiary) 0%, var(--tertiary-deep) 100%);
+    }
+    .pipe-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      margin-bottom: 12px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .pipe-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .pipe-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .analytics-lines { font-size: 0.8125rem; line-height: 1.45; color: var(--ink); }
+    .analytics-lines .analytics-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px 16px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--outline-variant);
+    }
+    .analytics-lines .analytics-row:first-child { padding-top: 0; }
+    .analytics-lines .analytics-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .analytics-lines .ak {
+      font-weight: 700;
+      color: var(--muted);
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .analytics-lines .av { font-weight: 600; color: var(--ink); text-align: right; max-width: 100%; }
+    .chart-empty {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      padding: 12px 0;
+    }
+    .pad-reports { max-width: 1100px; }
+    .reports-lede { margin: 0 0 18px; line-height: 1.5; }
+    .pad-reports .dash-metrics-title { margin-top: 22px; }
+    .pad-reports .dash-metrics-title:first-child { margin-top: 0; }
+    .reports-chart-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    @media (min-width: 880px) {
+      .reports-chart-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .reports-chart-span {
+      grid-column: 1 / -1;
+    }
+    .reports-range-card { margin-bottom: 4px; }
+    .rep-range-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .rep-range-row .btn-sm { padding: 8px 14px; font-size: 0.8125rem; }
+    .rep-date-lbl {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .rep-date-inp {
+      font-family: inherit;
+      padding: 9px 11px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--outline);
+      background: var(--surface-2);
+      font-size: 0.875rem;
+    }
+    .rep-range-hint { margin: 0 0 12px; font-size: 0.75rem; }
+    .rep-range-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    @media (max-width: 520px) {
+      .rep-range-summary-grid { grid-template-columns: 1fr; }
+    }
+    .rep-range-metric {
+      background: var(--surface-2);
+      border-radius: var(--r-md);
+      padding: 14px 16px;
+      border: 1px solid var(--outline-variant);
+    }
+    .rep-range-metric .lbl {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .rep-range-metric .val {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-top: 6px;
+      color: var(--ink);
+      letter-spacing: -0.03em;
+    }
+    .rep-range-metric .val-sm {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--ink);
+    }
+    .rep-range-period {
+      grid-column: 1 / -1;
+      margin: 0;
+      font-size: 0.8125rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .vbar-chart-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 0 -4px;
+      padding: 0 4px 6px;
+    }
+    .vbar-chart {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      gap: 3px;
+      min-height: 132px;
+      padding: 6px 2px 0;
+      min-width: min-content;
+    }
+    .vbar-col {
+      flex: 0 0 auto;
+      width: 26px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .vbar-bar-wrap {
+      width: 100%;
+      height: 118px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      border-bottom: 1px solid var(--outline-variant);
+    }
+    .vbar-bar {
+      width: 100%;
+      max-width: 22px;
+      min-height: 2px;
+      border-radius: 5px 5px 0 0;
+      background: linear-gradient(180deg, var(--primary) 0%, var(--primary-deep) 100%);
+      transition: height 0.35s ease;
+    }
+    .vbar-bar.exp-bar {
+      background: linear-gradient(180deg, #e11d48 0%, #9f1239 100%);
+    }
+    .vbar-bar.net-bar {
+      background: linear-gradient(180deg, var(--secondary) 0%, var(--secondary-deep) 100%);
+    }
+    .vbar-lbl {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.15;
+      max-width: 100%;
+    }
+    .donut-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 22px;
+      justify-content: center;
+      padding: 8px 0;
+    }
+    .donut-visual {
+      width: 148px;
+      height: 148px;
+      border-radius: 50%;
+      position: relative;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
+    }
+    .donut-visual::after {
+      content: '';
+      position: absolute;
+      inset: 30px;
+      border-radius: 50%;
+      background: var(--surface);
+      box-shadow: inset 0 0 0 1px var(--outline-variant);
+    }
+    .donut-legend {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .donut-legend li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .donut-legend li:last-child { margin-bottom: 0; }
+    .dot-mk { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-mk.d-p { background: var(--primary); }
+    .dot-mk.d-o { background: var(--secondary); }
+    .dot-mk.d-c { background: #dc2626; }
     .nav-item {
       display: flex;
       align-items: center;
@@ -453,6 +724,21 @@
       gap: 14px;
       align-items: stretch;
       margin-top: 6px;
+    }
+    .pos-tile-img-wrap {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: var(--r-sm);
+      overflow: hidden;
+      margin-bottom: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--outline-variant);
+    }
+    .pos-tile-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
     .pos-tile {
       flex: 1 1 158px;
@@ -546,6 +832,17 @@
       transition: background 0.12s, border-color 0.12s;
     }
     .pos-tile-qty button:hover { background: var(--surface); border-color: var(--primary); color: var(--primary); }
+    .menu-admin-thumb, .kline-thumb {
+      width: 44px;
+      height: 44px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--outline-variant);
+      flex-shrink: 0;
+      background: var(--surface-2);
+    }
+    .kline-inner { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .kline-inner span:last-child { margin-left: auto; flex-shrink: 0; }
     .price-muted { font-size: 0.8125rem; color: var(--muted); font-weight: 500; }
     .dock {
       background: var(--surface);
@@ -608,9 +905,6 @@
     table.data th, table.data td { padding: 10px 12px; border-bottom: 1px solid var(--outline-variant); text-align: left; }
     table.data th { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; background: var(--surface-2); }
     .hint { font-size: 0.8125rem; color: var(--muted); line-height: 1.5; margin: 8px 0; }
-    .platform-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
-    .platform-pill { font-size: 0.625rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--outline); }
-    .platform-pill.web { background: var(--primary-container); color: var(--on-primary-container); border-color: transparent; }
   </style>
 </head>
 <body>
@@ -665,6 +959,14 @@
             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M8.1 13.34l2.83-2.83L3.91 3.5c-1.56 1.56-1.56 4.09 0 5.66l4.19 4.18zm6.78-1.81c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41L12 14.41l6.88 6.88 1.41-1.41L13.41 13l1.47-1.47z"/></svg>
             <span class="nav-label">Kitchen</span>
           </button>
+          <button type="button" class="nav-item" data-tab="orders">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            <span class="nav-label">Order history</span>
+          </button>
+          <button type="button" class="nav-item" data-tab="reports">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+            <span class="nav-label">Reports</span>
+          </button>
           <div class="nav-group" id="nav-group-ops">
             <button type="button" class="nav-item nav-item-ops" id="nav-more" aria-expanded="false" aria-controls="sidebar-ops-children" aria-label="Show or hide operation modules">
               <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
@@ -675,6 +977,10 @@
               <div class="sidebar-ops-list" id="sidebar-ops-list"></div>
             </div>
           </div>
+          <a href="/download/android-app/" class="sidebar-download" id="sidebarDownloadApk" role="button" aria-label="Download Android app APK">
+            <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            <span class="nav-label">Download Android app</span>
+          </a>
         </nav>
         </div>
         <div class="sidebar-foot">
@@ -697,19 +1003,6 @@
           </header>
           <div class="pad pad-dash">
             <div class="dash-layout">
-              <div class="dash-hero-slot">
-                <div class="hero hero-dash">
-                  <div class="hero-icon" aria-hidden="true">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
-                  </div>
-                  <div>
-                    <p class="dash-kicker">Overview</p>
-                    <h2>Today’s performance</h2>
-                    <p class="hint" style="margin:8px 0 0">Key figures for this venue — web and Android use the same live data.</p>
-                    <div class="platform-row"><span class="platform-pill web">Web</span><span class="platform-pill">Android</span></div>
-                  </div>
-                </div>
-              </div>
               <div class="dash-stats-slot">
                 <p class="dash-metrics-title">Key metrics</p>
                 <div id="dash-stats" class="dash-stats-grid"></div>
@@ -717,6 +1010,27 @@
               <div class="dash-below-slot">
                 <p class="hint">Net profit uses paid sales today, minus expenses logged today, and one day’s share of staff salaries (monthly ÷ 30).</p>
                 <button type="button" class="btn btn-secondary btn-seed" id="btnSeed">Load sample tables &amp; menu (once)</button>
+              </div>
+            </div>
+            <div class="dash-charts-section" id="dash-charts-section" aria-label="Venue analytics">
+              <p class="dash-metrics-title">Analytics</p>
+              <div class="dash-charts-grid">
+                <div class="chart-card">
+                  <h3 class="chart-card-title">Paid revenue — last 7 days</h3>
+                  <div id="chart-revenue-7d" class="chart-body"></div>
+                </div>
+                <div class="chart-card">
+                  <h3 class="chart-card-title">Open orders by stage</h3>
+                  <div id="chart-order-pipeline" class="chart-body"></div>
+                </div>
+                <div class="chart-card">
+                  <h3 class="chart-card-title">Paid sales by category — last 14 days</h3>
+                  <div id="chart-category-14d" class="chart-body"></div>
+                </div>
+                <div class="chart-card" style="grid-column: 1 / -1;">
+                  <h3 class="chart-card-title">Period summary</h3>
+                  <div class="analytics-lines" id="chart-analytics-summary"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -740,6 +1054,14 @@
         <div id="page-kitchen" class="page hidden">
           <header class="hdr t3"><div><h1>Kitchen</h1><p>Ticket queue — tap a line to advance</p></div></header>
           <div class="pad" id="kitchen-body"></div>
+        </div>
+        <div id="page-orders" class="page hidden">
+          <header class="hdr"><div><h1>Order history</h1><p>All tickets — newest first</p></div></header>
+          <div class="pad" id="orders-body"></div>
+        </div>
+        <div id="page-reports" class="page hidden">
+          <header class="hdr t2"><div><h1>Reports</h1><p>Key venue figures (same rules as Dashboard)</p></div></header>
+          <div class="pad" id="reports-body"></div>
         </div>
         <div id="page-more" class="page hidden">
           <header class="hdr"><div><h1>Operations</h1><p>Back office &amp; configuration</p></div>
@@ -778,6 +1100,7 @@
 
   {{ web_modules|json_script:"web-modules-data" }}
   {{ billing_plans|json_script:"billing-plans-data" }}
+  {{ web_route|json_script:"web-route-data" }}
 
   <script>
   (function(){
@@ -786,6 +1109,16 @@
     var UPI_PKG = { phonepe:'com.phonepe.app', gpay:'com.google.android.apps.nbu.paisa.user', paytm:'net.one97.paytm' };
     var WEB_MODULES = JSON.parse(document.getElementById('web-modules-data').textContent);
     var BILLING_PLANS = JSON.parse(document.getElementById('billing-plans-data').textContent);
+    var WEB_ROUTE = { segment: '', module: '' };
+    (function(){
+      var el = document.getElementById('web-route-data');
+      if (el && el.textContent) {
+        try { WEB_ROUTE = JSON.parse(el.textContent); } catch (e) { WEB_ROUTE = { segment: '', module: '' }; }
+      }
+      if (!WEB_ROUTE || typeof WEB_ROUTE !== 'object') WEB_ROUTE = { segment: '', module: '' };
+      if (WEB_ROUTE.segment == null) WEB_ROUTE.segment = '';
+      if (WEB_ROUTE.module == null) WEB_ROUTE.module = '';
+    })();
     var sync = null;
     var cart = {};
     var posCat = null;
@@ -808,10 +1141,9 @@
         .then(function(r){ return r.text().then(function(t){ var j=null; try{j=t?JSON.parse(t):null}catch(e){} return {ok:r.ok,status:r.status,data:j,raw:t}; }); });
     }
     function parseModules(raw){
-      if (!raw || !String(raw).trim()) return {kitchen:true,qrMenu:true,inventory:true,staff:true,expenses:true,tablesFloor:false,reservations:false,suppliersPo:false,wasteLog:false,cashDrawer:false,customerFeedback:false};
+      if (!raw || !String(raw).trim()) return {kitchen:true,qrMenu:true,inventory:true,staff:true,expenses:true};
       try { var o=JSON.parse(raw); return {
-        kitchen: o.kitchen!==false, qrMenu: o.qrMenu!==false, inventory: o.inventory!==false, staff: o.staff!==false, expenses: o.expenses!==false,
-        tablesFloor:!!o.tablesFloor, reservations:!!o.reservations, suppliersPo:!!o.suppliersPo, wasteLog:!!o.wasteLog, cashDrawer:!!o.cashDrawer, customerFeedback:!!o.customerFeedback
+        kitchen: o.kitchen!==false, qrMenu: o.qrMenu!==false, inventory: o.inventory!==false, staff: o.staff!==false, expenses: o.expenses!==false
       };} catch(e){ return parseModules(''); }
     }
     function hubOk(slug, f){
@@ -820,15 +1152,400 @@
       if (slug==='inventory') return f.inventory;
       if (slug==='expenses') return f.expenses;
       if (slug==='staff') return f.staff;
-      if (slug==='tables_floor') return f.tablesFloor;
-      if (slug==='reservations') return f.reservations;
-      if (slug==='suppliers_po') return f.suppliersPo;
-      if (slug==='waste_log') return f.wasteLog;
-      if (slug==='cash_drawer') return f.cashDrawer;
-      if (slug==='customer_feedback') return f.customerFeedback;
       return true;
     }
+    function escapeAttr(s){
+      return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function menuCategoriesMultilineFromPipe(pipe){
+      var defs = ['Starters','Mains','Desserts','Drinks'];
+      var raw = (pipe == null ? '' : String(pipe)).trim();
+      if (!raw) return defs.join('\n');
+      var parts = raw.split('|').map(function(x){ return x.trim(); }).filter(Boolean);
+      var seen = {};
+      var out = [];
+      parts.forEach(function(c){ if (!seen[c]) { seen[c]=1; out.push(c); } });
+      return out.length ? out.join('\n') : defs.join('\n');
+    }
+    function menuCategoriesPipeFromMultiline(text){
+      return String(text||'').split(/\r?\n/).map(function(l){ return l.trim(); }).filter(Boolean).filter(function(x,i,a){ return a.indexOf(x)===i; }).join('|');
+    }
+    function resolvedMenuCategoriesWeb(pipe){
+      var defs = ['Starters','Mains','Desserts','Drinks'];
+      var raw = (pipe == null ? '' : String(pipe)).trim();
+      if (!raw) return defs.slice();
+      var parts = raw.split('|').map(function(x){ return x.trim(); }).filter(Boolean);
+      var seen = {};
+      var out = [];
+      parts.forEach(function(c){ if (!seen[c]) { seen[c]=1; out.push(c); } });
+      return out.length ? out : defs.slice();
+    }
     function loadSync(){ return api('GET','/sync/full/').then(function(r){ if(r.ok) sync=r.data; return r.ok; }); }
+
+    function last7DayBuckets(){
+      var buckets = [];
+      for (var i = 6; i >= 0; i--) {
+        var d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - i);
+        buckets.push({
+          start: d.getTime(),
+          label: d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }),
+        });
+      }
+      return buckets;
+    }
+
+    function lastNDayBuckets(n){
+      var buckets = [];
+      for (var i = n - 1; i >= 0; i--) {
+        var d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - i);
+        buckets.push({
+          start: d.getTime(),
+          label: d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }),
+          shortLabel: String(d.getDate()),
+        });
+      }
+      return buckets;
+    }
+
+    function renderHBarRows(containerId, rows, maxVal, fillClass){
+      var el = typeof containerId === 'string' ? $(containerId) : containerId;
+      if (!el) return;
+      var max = Math.max(maxVal, 1);
+      if (!rows.length) {
+        el.innerHTML = '<p class="chart-empty">No data for this period yet.</p>';
+        return;
+      }
+      el.innerHTML = rows.map(function(r){
+        var pct = Math.round((Math.abs(r.v) / max) * 100);
+        var fc = fillClass ? String(fillClass) : '';
+        return '<div class="hbar-row"><span class="hbar-lbl" title="'+escapeHtml(r.label)+'">'+escapeHtml(r.label)+'</span>'+
+          '<div class="hbar-track"><div class="hbar-fill '+fc+'" style="width:'+pct+'%"></div></div>'+
+          '<span class="hbar-val">'+escapeHtml(r.moneyText)+'</span></div>';
+      }).join('');
+    }
+
+    function renderDashboardCharts(){
+      var ids = ['chart-revenue-7d','chart-order-pipeline','chart-category-14d','chart-analytics-summary'];
+      if (!sync) {
+        ids.forEach(function(id){
+          var n = $(id);
+          if (!n) return;
+          if (id === 'chart-analytics-summary') n.innerHTML = '<p class="chart-empty" style="margin:0">Sign in and sync to see analytics.</p>';
+          else n.innerHTML = '<p class="chart-empty">Sign in and sync to see analytics.</p>';
+        });
+        return;
+      }
+      var orders = sync.orders || [];
+      var buckets = last7DayBuckets();
+      var revRows = buckets.map(function(b){
+        var next = b.start + 86400000;
+        var v = orders.filter(function(o){
+          return o.status === 'PAID' && (o.created_at_epoch_millis||0) >= b.start && (o.created_at_epoch_millis||0) < next;
+        }).reduce(function(s, o){ return s + (o.total_cents||0); }, 0);
+        return { label: b.label, v: v, moneyText: money(v) };
+      });
+      var maxRev = revRows.reduce(function(m, r){ return Math.max(m, r.v); }, 0);
+      renderHBarRows('chart-revenue-7d', revRows, maxRev, '');
+
+      var open = orders.filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status) < 0; });
+      var pipe = { OPEN: 0, IN_KITCHEN: 0, READY: 0, OTHER: 0 };
+      open.forEach(function(o){
+        var st = o.status || 'OTHER';
+        if (Object.prototype.hasOwnProperty.call(pipe, st)) pipe[st]++;
+        else pipe.OTHER++;
+      });
+      var pipeRows = [
+        { label: 'Open / cart', v: pipe.OPEN, moneyText: String(pipe.OPEN) },
+        { label: 'In kitchen', v: pipe.IN_KITCHEN, moneyText: String(pipe.IN_KITCHEN) },
+        { label: 'Ready to serve', v: pipe.READY, moneyText: String(pipe.READY) },
+      ];
+      if (pipe.OTHER) pipeRows.push({ label: 'Other status', v: pipe.OTHER, moneyText: String(pipe.OTHER) });
+      var maxP = pipeRows.reduce(function(m, r){ return Math.max(m, r.v); }, 0);
+      if (!open.length) $('chart-order-pipeline').innerHTML = '<p class="chart-empty">No active orders right now.</p>';
+      else renderHBarRows('chart-order-pipeline', pipeRows, maxP, 'sec');
+
+      var cut14 = Date.now() - 14 * 86400000;
+      var menuMap = {};
+      (sync.menu_items || []).forEach(function(m){ menuMap[m.id] = m; });
+      var catTotals = {};
+      orders.forEach(function(o){
+        if (o.status !== 'PAID' || (o.created_at_epoch_millis||0) < cut14) return;
+        (o.lines || []).forEach(function(ln){
+          var mi = menuMap[ln.menu_item_id];
+          var cname = (mi && mi.category && String(mi.category).trim()) ? String(mi.category).trim() : 'Other';
+          var cents = (ln.unit_price_cents||0) * (ln.quantity||0);
+          catTotals[cname] = (catTotals[cname] || 0) + cents;
+        });
+      });
+      var catList = Object.keys(catTotals).map(function(k){
+        return { label: k, v: catTotals[k], moneyText: money(catTotals[k]) };
+      });
+      catList.sort(function(a, b){ return b.v - a.v; });
+      var catTop = catList.slice(0, 8);
+      var maxC = catTop.reduce(function(m, r){ return Math.max(m, r.v); }, 0);
+      renderHBarRows('chart-category-14d', catTop, maxC, 'ter');
+
+      var sum7 = revRows.reduce(function(s, r){ return s + r.v; }, 0);
+      var windowStart = buckets[0].start;
+      var paid7 = orders.filter(function(o){
+        return o.status === 'PAID' && (o.created_at_epoch_millis||0) >= windowStart;
+      }).length;
+      var t0 = startToday();
+      var todayPaid = orders.filter(function(o){
+        return o.status === 'PAID' && (o.created_at_epoch_millis||0) >= t0;
+      }).reduce(function(s, o){ return s + (o.total_cents||0); }, 0);
+      var avgDay = sum7 / 7;
+      var vsAvg = avgDay <= 0 ? null : Math.round((todayPaid / avgDay) * 100 - 100);
+      var sumEl = $('chart-analytics-summary');
+      if (sumEl) {
+        var comp = vsAvg == null ? '—' : ((vsAvg >= 0 ? '+' + vsAvg : String(vsAvg)) + '% vs 7-day daily average');
+        sumEl.innerHTML =
+          '<div class="analytics-row"><span class="ak">Last 7 days (paid)</span><span class="av">'+money(sum7)+' · '+paid7+' order'+(paid7 === 1 ? '' : 's')+'</span></div>'+
+          '<div class="analytics-row"><span class="ak">Today (paid sales)</span><span class="av">'+money(todayPaid)+'</span></div>'+
+          '<div class="analytics-row"><span class="ak">7-day daily average</span><span class="av">'+money(Math.round(avgDay))+'</span></div>'+
+          '<div class="analytics-row"><span class="ak">Today vs average</span><span class="av">'+escapeHtml(comp)+'</span></div>';
+      }
+    }
+
+    function renderVBarChart(target, rows, maxVal, barClass){
+      var el = typeof target === 'string' ? $(target) : target;
+      if (!el) return;
+      var max = Math.max(maxVal, 1);
+      if (!rows.length) {
+        el.innerHTML = '<p class="chart-empty">No data for this period.</p>';
+        return;
+      }
+      var bc = barClass ? String(barClass) : '';
+      el.innerHTML =
+        '<div class="vbar-chart-scroll"><div class="vbar-chart" role="img">'+
+        rows.map(function(r){
+          var pct = Math.round((Math.abs(r.v) / max) * 100);
+          var tip = escapeHtml(r.label) + ' · ' + escapeHtml(r.display || '');
+          return '<div class="vbar-col"><div class="vbar-bar-wrap" title="'+tip+'">'+
+            '<div class="vbar-bar '+bc+'" style="height:'+pct+'%"></div></div>'+
+            '<span class="vbar-lbl">'+escapeHtml(r.shortLabel || r.label)+'</span></div>';
+        }).join('')+
+        '</div></div>';
+    }
+
+    function renderOrderMixDonut(target, orders){
+      var el = typeof target === 'string' ? $(target) : target;
+      if (!el) return;
+      var paid = 0, cancelled = 0, openC = 0;
+      (orders || []).forEach(function(o){
+        if (o.status === 'PAID') paid++;
+        else if (o.status === 'CANCELLED') cancelled++;
+        else openC++;
+      });
+      var t = paid + cancelled + openC;
+      if (!t) {
+        el.innerHTML = '<p class="chart-empty">No orders recorded yet.</p>';
+        return;
+      }
+      var pp = (paid / t) * 100, pc = (cancelled / t) * 100, po = (openC / t) * 100;
+      var g = 'conic-gradient(var(--primary) 0% '+pp+'%, #dc2626 '+pp+'% '+(pp+pc)+'%, var(--secondary) '+(pp+pc)+'% 100%)';
+      el.innerHTML =
+        '<div class="donut-row">'+
+        '<div class="donut-visual" style="background:'+g+'" role="img" aria-label="Orders: '+paid+' paid, '+openC+' open, '+cancelled+' cancelled"></div>'+
+        '<ul class="donut-legend">'+
+        '<li><span class="dot-mk d-p"></span> Paid · '+paid+' ('+Math.round(pp)+'%)</li>'+
+        '<li><span class="dot-mk d-o"></span> Open pipeline · '+openC+' ('+Math.round(po)+'%)</li>'+
+        '<li><span class="dot-mk d-c"></span> Cancelled · '+cancelled+' ('+Math.round(pc)+'%)</li>'+
+        '</ul></div>';
+    }
+
+    function populateReportsCharts(){
+      if (!sync) return;
+      var orders = sync.orders || [];
+      var expenses = sync.expenses || [];
+      var staff = sync.staff || [];
+      var salTotal = staff.reduce(function(s, m){ return s + (m.salary_cents || 0); }, 0);
+      var dailySalShare = Math.floor(salTotal / 30);
+
+      var b30 = lastNDayBuckets(30);
+      var rev30 = b30.map(function(b){
+        var next = b.start + 86400000;
+        var v = orders.filter(function(o){
+          return o.status === 'PAID' && (o.created_at_epoch_millis || 0) >= b.start && (o.created_at_epoch_millis || 0) < next;
+        }).reduce(function(s, o){ return s + (o.total_cents || 0); }, 0);
+        return { label: b.label, shortLabel: b.shortLabel, v: v, display: money(v) };
+      });
+      var max30 = rev30.reduce(function(m, r){ return Math.max(m, r.v); }, 0);
+      renderVBarChart('rep-vbar-revenue-30d', rev30, max30, '');
+
+      var b7 = last7DayBuckets();
+      var rev7 = b7.map(function(b){
+        var next = b.start + 86400000;
+        var v = orders.filter(function(o){
+          return o.status === 'PAID' && (o.created_at_epoch_millis || 0) >= b.start && (o.created_at_epoch_millis || 0) < next;
+        }).reduce(function(s, o){ return s + (o.total_cents || 0); }, 0);
+        return { label: b.label, v: v, moneyText: money(v) };
+      });
+      var maxR7 = rev7.reduce(function(m, r){ return Math.max(m, r.v); }, 0);
+      renderHBarRows('rep-hbar-revenue-7d', rev7, maxR7, '');
+
+      var exp7 = b7.map(function(b){
+        var next = b.start + 86400000;
+        var v = expenses.filter(function(e){
+          return (e.created_at_epoch_millis || 0) >= b.start && (e.created_at_epoch_millis || 0) < next;
+        }).reduce(function(s, e){ return s + (e.amount_cents || 0); }, 0);
+        return { label: b.label, v: v, moneyText: money(v) };
+      });
+      var maxE7 = exp7.reduce(function(m, r){ return Math.max(m, r.v); }, 0);
+      renderHBarRows('rep-hbar-expenses-7d', exp7, maxE7, 'sec');
+
+      var net7 = b7.map(function(b){
+        var next = b.start + 86400000;
+        var rev = orders.filter(function(o){
+          return o.status === 'PAID' && (o.created_at_epoch_millis || 0) >= b.start && (o.created_at_epoch_millis || 0) < next;
+        }).reduce(function(s, o){ return s + (o.total_cents || 0); }, 0);
+        var exp = expenses.filter(function(e){
+          return (e.created_at_epoch_millis || 0) >= b.start && (e.created_at_epoch_millis || 0) < next;
+        }).reduce(function(s, e){ return s + (e.amount_cents || 0); }, 0);
+        var net = rev - exp - dailySalShare;
+        return { label: b.label, v: net, moneyText: money(net) };
+      });
+      var maxNet = net7.reduce(function(m, r){ return Math.max(m, Math.abs(r.v)); }, 0);
+      renderHBarRows('rep-hbar-net-7d', net7, maxNet, 'ter');
+
+      renderOrderMixDonut('rep-order-mix', orders);
+
+      var cut14 = Date.now() - 14 * 86400000;
+      var menuMap = {};
+      (sync.menu_items || []).forEach(function(m){ menuMap[m.id] = m; });
+      var catTotals = {};
+      orders.forEach(function(o){
+        if (o.status !== 'PAID' || (o.created_at_epoch_millis || 0) < cut14) return;
+        (o.lines || []).forEach(function(ln){
+          var mi = menuMap[ln.menu_item_id];
+          var cname = (mi && mi.category && String(mi.category).trim()) ? String(mi.category).trim() : 'Other';
+          var cents = (ln.unit_price_cents || 0) * (ln.quantity || 0);
+          catTotals[cname] = (catTotals[cname] || 0) + cents;
+        });
+      });
+      var catList = Object.keys(catTotals).map(function(k){
+        return { label: k, v: catTotals[k], moneyText: money(catTotals[k]) };
+      });
+      catList.sort(function(a, b){ return b.v - a.v; });
+      var catTop = catList.slice(0, 10);
+      var maxC = catTop.reduce(function(m, r){ return Math.max(m, r.v); }, 0);
+      renderHBarRows('rep-hbar-category-14d', catTop, maxC, '');
+
+      var t0 = startToday();
+      var revToday = orders.filter(function(o){ return o.status === 'PAID' && (o.created_at_epoch_millis || 0) >= t0; })
+        .reduce(function(s, o){ return s + (o.total_cents || 0); }, 0);
+      var expToday = expenses.filter(function(e){ return (e.created_at_epoch_millis || 0) >= t0; })
+        .reduce(function(s, e){ return s + (e.amount_cents || 0); }, 0);
+      var netToday = revToday - expToday - dailySalShare;
+      var winStart = b7[0].start;
+      var rev7sum = rev7.reduce(function(s, r){ return s + r.v; }, 0);
+      var exp7sum = exp7.reduce(function(s, r){ return s + r.v; }, 0);
+      var net7sum = net7.reduce(function(s, r){ return s + r.v; }, 0);
+      var sumEl = $('rep-analytics-summary');
+      if (sumEl) {
+        sumEl.innerHTML =
+          '<div class="analytics-row"><span class="ak">Today · net profit</span><span class="av">'+money(netToday)+'</span></div>'+
+          '<div class="analytics-row"><span class="ak">Last 7 days · paid revenue</span><span class="av">'+money(rev7sum)+'</span></div>'+
+          '<div class="analytics-row"><span class="ak">Last 7 days · expenses logged</span><span class="av">'+money(exp7sum)+'</span></div>'+
+          '<div class="analytics-row"><span class="ak">Last 7 days · net (after salary share)</span><span class="av">'+money(net7sum)+'</span></div>'+
+          '<div class="analytics-row"><span class="ak">Salary load</span><span class="av">'+money(salTotal)+'/mo · '+money(dailySalShare)+'/day deducted</span></div>';
+      }
+    }
+
+    function isoDateLocal(d){
+      var y = d.getFullYear(), mo = d.getMonth() + 1, day = d.getDate();
+      return y + '-' + (mo < 10 ? '0' : '') + mo + '-' + (day < 10 ? '0' : '') + day;
+    }
+    function thisMonthBoundsLocal(){
+      var d = new Date();
+      var from = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0).getTime();
+      var toExc = new Date(d.getFullYear(), d.getMonth() + 1, 1, 0, 0, 0, 0).getTime();
+      return { from: from, toExc: toExc };
+    }
+    function last30DayBoundsLocal(){
+      var end = new Date();
+      end.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() + 1);
+      var start = new Date(end.getTime());
+      start.setDate(start.getDate() - 30);
+      return { from: start.getTime(), toExc: end.getTime() };
+    }
+    function parseDateInputLocal(iso){
+      if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+      var p = iso.split('-');
+      var t = new Date(+p[0], +p[1] - 1, +p[2], 0, 0, 0, 0).getTime();
+      return isNaN(t) ? null : t;
+    }
+    function nextDayStartFromIso(iso){
+      var p = iso.split('-');
+      return new Date(+p[0], +p[1] - 1, +p[2] + 1, 0, 0, 0, 0).getTime();
+    }
+    function orderRangeStats(fromMs, toExc){
+      var orders = (sync && sync.orders) || [];
+      var inR = orders.filter(function(o){
+        var t = o.created_at_epoch_millis || 0;
+        return t >= fromMs && t < toExc;
+      });
+      var paid = inR.filter(function(o){ return o.status === 'PAID'; });
+      var income = paid.reduce(function(s, o){ return s + (o.total_cents || 0); }, 0);
+      return { tickets: inR.length, paidCount: paid.length, incomeCents: income };
+    }
+    function formatRangeLabel(fromMs, toExc){
+      return isoDateLocal(new Date(fromMs)) + ' → ' + isoDateLocal(new Date(toExc - 1));
+    }
+    function updateReportRangeSummary(rootEl){
+      if (!sync || !rootEl) return;
+      var fromInp = rootEl.querySelector('[data-rep-date-from]');
+      var toInp = rootEl.querySelector('[data-rep-date-to]');
+      var box = rootEl.querySelector('[data-rep-summary]');
+      if (!fromInp || !toInp || !box) return;
+      var f = parseDateInputLocal(fromInp.value);
+      var tStart = parseDateInputLocal(toInp.value);
+      if (f == null || tStart == null) {
+        box.innerHTML = '<p class="hint">Choose From and To dates.</p>';
+        return;
+      }
+      var toExc = nextDayStartFromIso(toInp.value);
+      if (toExc <= f) {
+        box.innerHTML = '<p class="hint">To date must be on or after From.</p>';
+        return;
+      }
+      var st = orderRangeStats(f, toExc);
+      box.innerHTML =
+        '<div class="rep-range-metric"><div class="lbl">Orders received (all tickets)</div><div class="val">' + st.tickets + '</div>' +
+        '<div class="lbl" style="margin-top:10px">Paid orders</div><div class="val-sm">' + st.paidCount + '</div></div>' +
+        '<div class="rep-range-metric"><div class="lbl">Paid income (completed sales)</div><div class="val">' + money(st.incomeCents) + '</div></div>' +
+        '<p class="rep-range-period">' + escapeHtml(formatRangeLabel(f, toExc)) + '</p>';
+    }
+    function wireReportRangeControls(rootEl){
+      if (!rootEl) return;
+      var b1 = rootEl.querySelector('[data-rep-preset="this-month"]');
+      var b2 = rootEl.querySelector('[data-rep-preset="last30"]');
+      var b3 = rootEl.querySelector('[data-rep-apply]');
+      var df = rootEl.querySelector('[data-rep-date-from]');
+      var dt = rootEl.querySelector('[data-rep-date-to]');
+      if (b1) {
+        b1.onclick = function(){
+          var r = thisMonthBoundsLocal();
+          if (df) df.value = isoDateLocal(new Date(r.from));
+          if (dt) dt.value = isoDateLocal(new Date(r.toExc - 1));
+          updateReportRangeSummary(rootEl);
+        };
+      }
+      if (b2) {
+        b2.onclick = function(){
+          var r = last30DayBoundsLocal();
+          if (df) df.value = isoDateLocal(new Date(r.from));
+          if (dt) dt.value = isoDateLocal(new Date(r.toExc - 1));
+          updateReportRangeSummary(rootEl);
+        };
+      }
+      if (b3) b3.onclick = function(){ updateReportRangeSummary(rootEl); };
+    }
 
     function dashStats(){
       var t0 = startToday();
@@ -842,7 +1559,10 @@
       var net = rev - expSum - Math.floor(sal/30);
       $('dash-stats').innerHTML =
         '<div class="stat s0"><div class="lbl">Today\'s net profit</div><div class="val">'+money(net)+'</div></div>'+
-        '<div class="stat s1"><div class="lbl">Active orders</div><div class="val">'+active+'</div></div>';
+        '<div class="stat s1"><div class="lbl">Today\'s paid sales</div><div class="val">'+money(rev)+'</div></div>'+
+        '<div class="stat s2"><div class="lbl">Today\'s expenses</div><div class="val">'+money(expSum)+'</div></div>'+
+        '<div class="stat s3"><div class="lbl">Active orders</div><div class="val">'+active+'</div></div>';
+      renderDashboardCharts();
     }
 
     function renderPos(){
@@ -868,9 +1588,10 @@
         var sel = posSelectedId === m.id ? ' selected' : '';
         mh +=
           '<div class="pos-tile'+sel+'" data-id="'+m.id+'" role="button" tabindex="0" aria-pressed="'+(posSelectedId===m.id?'true':'false')+'">'+
+          '<div class="pos-tile-img-wrap"><img class="pos-tile-img" src="'+escapeHtml(menuItemDisplayImageUrl(m))+'" alt="" loading="lazy" decoding="async" draggable="false"/></div>'+
           '<span class="pos-tile-cat">'+escapeHtml(m.category||'Menu')+'</span>'+
           '<span class="pos-tile-name">'+escapeHtml(m.name)+'</span>'+
-          '<span class="pos-tile-price">'+money(m.price_cents)+'</span>'+
+          '<span class="pos-tile-price">'+money(m.price)+'</span>'+
           '<div class="pos-tile-qty">'+
           '<button type="button" data-d="-1" data-id="'+m.id+'" aria-label="Decrease quantity">−</button>'+
           '<span>'+q+'</span>'+
@@ -908,7 +1629,7 @@
           renderPos();
         });
       }
-      var total = 0; Object.keys(cart).forEach(function(id){ var m=menu.find(function(x){ return x.id==+id; }); if(m) total += m.price_cents*(cart[id]||0); });
+      var total = 0; Object.keys(cart).forEach(function(id){ var m=menu.find(function(x){ return x.id==+id; }); if(m) total += m.price*(cart[id]||0); });
       $('cart-total').textContent = money(total);
       var open = (sync.orders||[]).filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status)<0; });
       var oh = '<p class="hint"><strong>Active orders</strong></p>';
@@ -937,9 +1658,14 @@
       orders.forEach(function(o){
         html += '<div class="card k"><strong>Order #'+o.id+' · '+o.status+'</strong>';
         (o.lines||[]).forEach(function(line){
-          var nm = (menuMap[line.menu_item_id]||{}).name || ('Item #'+line.menu_item_id);
-          html += '<div style="margin-top:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,.35);display:flex;justify-content:space-between;align-items:center;cursor:pointer" class="kline" data-lid="'+line.id+'" data-oid="'+o.id+'">'+
-            '<span>'+escapeHtml(nm)+' × '+line.quantity+'</span><span style="font-size:0.8rem;font-weight:700">'+line.kitchen_status+' →</span></div>';
+          var mi = menuMap[line.menu_item_id] || {};
+          var nm = mi.name || ('Item #'+line.menu_item_id);
+          var imgSrc = menuItemDisplayImageUrl(mi);
+          html += '<div style="margin-top:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,.35);display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:10px" class="kline" data-lid="'+line.id+'" data-oid="'+o.id+'">'+
+            '<div class="kline-inner" style="flex:1;min-width:0">'+
+            '<img class="kline-thumb" src="'+escapeHtml(imgSrc)+'" alt="" loading="lazy" draggable="false"/>'+
+            '<span style="min-width:0">'+escapeHtml(nm)+' × '+line.quantity+'</span></div>'+
+            '<span style="font-size:0.8rem;font-weight:700;flex-shrink:0">'+line.kitchen_status+' →</span></div>';
         });
         html += '</div>';
       });
@@ -985,9 +1711,12 @@
       setOpsNavExpanded(!g.classList.contains('is-open'));
     }
 
+    function isTopNavModule(slug){
+      return slug === 'orders' || slug === 'reports';
+    }
     function renderOpsCards(){
       var f = parseModules((sync&&sync.settings&&sync.settings.modules_json)||'');
-      var modules = WEB_MODULES.filter(function(m){ return hubOk(m.slug, f); });
+      var modules = WEB_MODULES.filter(function(m){ return !isTopNavModule(m.slug) && hubOk(m.slug, f); });
       var el = $('ops-cards');
       if (el) {
         el.innerHTML = '';
@@ -1016,10 +1745,24 @@
       setSidebarOpsActive(currentOpsSlug);
     }
 
-    function openModule(slug, title){
+    function slugToWorkspacePath(internalSlug){
+      if (!internalSlug) return '/workspace/';
+      return '/workspace/' + String(internalSlug).replace(/_/g, '-') + '/';
+    }
+
+    function pushWorkspaceBrowserUrl(){
+      if (!$('screen-app') || $('screen-app').classList.contains('hidden')) return;
+      var url = slugToWorkspacePath(currentOpsSlug);
+      var cur = location.pathname || '/';
+      if (cur === url) return;
+      history.pushState({}, '', url);
+    }
+
+    function openModule(slug, title, opts){
+      opts = opts || {};
       var pm = $('page-more');
       if (!pm || pm.classList.contains('hidden')) {
-        showTab('more', { preserveMoreModule: true });
+        showTab('more', { preserveMoreModule: true, skipUrl: true });
       }
       currentOpsSlug = slug;
       setOpsNavExpanded(true);
@@ -1028,25 +1771,25 @@
       $('more-detail').classList.remove('hidden');
       $('moreTitle').textContent = title;
       var mc = $('moreContent'); mc.innerHTML = '';
-      if (['tables_floor','reservations','suppliers_po','waste_log','cash_drawer','customer_feedback'].indexOf(slug)>=0){
-        mc.innerHTML = '<p class="hint">This area is reserved for a future release — same as the app. Enable the module under Global settings when you are ready.</p>';
-        return;
+      if (slug==='settings'){ renderSettings(mc); }
+      else if (slug==='inventory'){ renderInventory(mc); }
+      else if (slug==='expenses'){ renderExpenses(mc); }
+      else if (slug==='staff'){ renderStaff(mc); }
+      else if (slug==='reports'){ renderReports(mc); }
+      else if (slug==='orders'){ renderOrders(mc); }
+      else if (slug==='menu_admin'){ renderMenuAdmin(mc); }
+      else if (slug==='qr_menu'){ renderQr(mc); }
+      else {
+        mc.innerHTML = '<p class="hint">Open this section in the Android app for the full experience.</p>';
       }
-      if (slug==='settings'){ renderSettings(mc); return; }
-      if (slug==='inventory'){ renderInventory(mc); return; }
-      if (slug==='expenses'){ renderExpenses(mc); return; }
-      if (slug==='staff'){ renderStaff(mc); return; }
-      if (slug==='reports'){ renderReports(mc); return; }
-      if (slug==='orders'){ renderOrders(mc); return; }
-      if (slug==='menu_admin'){ renderMenuAdmin(mc); return; }
-      if (slug==='qr_menu'){ renderQr(mc); return; }
-      mc.innerHTML = '<p class="hint">Open this section in the Android app for the full experience.</p>';
+      if (!opts.skipUrl) pushWorkspaceBrowserUrl();
     }
     $('moreBack').onclick = function(){
       currentOpsSlug = null;
       setSidebarOpsActive(null);
       $('more-detail').classList.add('hidden');
       $('more-hub').classList.remove('hidden');
+      pushWorkspaceBrowserUrl();
     };
 
     function renderSettings(el){
@@ -1054,9 +1797,16 @@
       el.innerHTML = '<label>Venue name</label><input id="set-name" value="'+escapeHtml(s.venue_name||'')+'"/>'+
         '<label>Tax %</label><input id="set-tax" type="number" step="0.1" value="'+(s.tax_percent!=null?s.tax_percent:5)+'"/>'+
         '<label>Service charge %</label><input id="set-svc" type="number" step="0.1" value="'+(s.service_charge_percent!=null?s.service_charge_percent:0)+'"/>'+
+        '<label>Menu categories (one per line)</label><p class="hint" style="margin:0 0 6px;font-size:0.8rem">Same as the Android app Global settings. Used for the category list when you add menu items on the web.</p>'+
+        '<textarea id="set-menu-cats" rows="6" style="width:100%;max-width:100%;box-sizing:border-box;resize:vertical;font:inherit;padding:8px;border-radius:8px;border:1px solid var(--outline-variant)">'+escapeHtml(menuCategoriesMultilineFromPipe(s.menu_categories||''))+'</textarea>'+
         '<button type="button" class="btn btn-primary" id="set-save" style="margin-top:14px">Save</button>';
       $('set-save').onclick = function(){
-        api('PUT','/settings/venue/',{venue_name:$('set-name').value,tax_percent:parseFloat($('set-tax').value)||0,service_charge_percent:parseFloat($('set-svc').value)||0}).then(function(r){
+        api('PUT','/settings/venue/',{
+          venue_name:$('set-name').value,
+          tax_percent:parseFloat($('set-tax').value)||0,
+          service_charge_percent:parseFloat($('set-svc').value)||0,
+          menu_categories:menuCategoriesPipeFromMultiline($('set-menu-cats').value)
+        }).then(function(r){
           if(r.ok) loadSync().then(function(){ alert('Saved'); });
           else alert('Save failed');
         });
@@ -1098,8 +1848,76 @@
       el.innerHTML = '<table class="data"><thead><tr><th>Name</th><th>Role</th><th>Salary</th><th>Shift</th></tr></thead><tbody>'+rows+'</tbody></table>';
     }
     function renderReports(el){
+      if (!sync) {
+        el.innerHTML = '<p class="hint">Sign in and load venue data to see reports.</p>';
+        return;
+      }
       dashStats();
-      el.innerHTML = $('dash-stats').innerHTML + '<p class="hint" style="margin-top:12px">Figures mirror Dashboard (same rules as the app).</p>';
+      el.innerHTML =
+        '<p class="hint reports-lede">Analytics use the same venue rules as the Dashboard: net figures subtract logged expenses and one day’s share of total monthly salaries (÷30).</p>'+
+        '<p class="dash-metrics-title">Orders and income by date range</p>'+
+        '<div class="chart-card reports-range-card">'+
+        '<div class="rep-range-row">'+
+        '<button type="button" class="btn btn-secondary btn-sm" data-rep-preset="this-month">This month</button>'+
+        '<button type="button" class="btn btn-secondary btn-sm" data-rep-preset="last30">Last 30 days</button></div>'+
+        '<div class="rep-range-row">'+
+        '<label class="rep-date-lbl">From<input type="date" data-rep-date-from class="rep-date-inp" aria-label="From date"/></label>'+
+        '<label class="rep-date-lbl">To<input type="date" data-rep-date-to class="rep-date-inp" aria-label="To date"/></label>'+
+        '<button type="button" class="btn btn-primary btn-sm" data-rep-apply>Apply range</button></div>'+
+        '<p class="hint rep-range-hint">Orders received = every ticket created in the range. Paid income = sum of <strong>PAID</strong> orders only.</p>'+
+        '<div data-rep-summary class="rep-range-summary-grid"></div></div>'+
+        '<p class="dash-metrics-title">Today · headline KPIs</p>'+
+        '<div id="rep-stats-grid" class="dash-stats-grid"></div>'+
+        '<p class="dash-metrics-title">Trend charts</p>'+
+        '<div class="reports-chart-grid">'+
+        '<div class="chart-card reports-chart-span">'+
+        '<h3 class="chart-card-title">Paid revenue by day · last 30 days</h3>'+
+        '<div id="rep-vbar-revenue-30d" class="chart-body"></div></div>'+
+        '<div class="chart-card">'+
+        '<h3 class="chart-card-title">Paid revenue · last 7 days</h3>'+
+        '<div id="rep-hbar-revenue-7d" class="chart-body"></div></div>'+
+        '<div class="chart-card">'+
+        '<h3 class="chart-card-title">Expenses logged · last 7 days</h3>'+
+        '<div id="rep-hbar-expenses-7d" class="chart-body"></div></div>'+
+        '<div class="chart-card">'+
+        '<h3 class="chart-card-title">Estimated net profit · last 7 days</h3>'+
+        '<p class="hint" style="margin:-6px 0 10px;font-size:0.75rem">Paid sales − day expenses − salary share</p>'+
+        '<div id="rep-hbar-net-7d" class="chart-body"></div></div>'+
+        '<div class="chart-card">'+
+        '<h3 class="chart-card-title">All orders · outcome mix</h3>'+
+        '<div id="rep-order-mix" class="chart-body"></div></div>'+
+        '<div class="chart-card">'+
+        '<h3 class="chart-card-title">Paid sales by category · last 14 days</h3>'+
+        '<div id="rep-hbar-category-14d" class="chart-body"></div></div>'+
+        '<div class="chart-card reports-chart-span">'+
+        '<h3 class="chart-card-title">Period totals</h3>'+
+        '<div class="analytics-lines" id="rep-analytics-summary"></div></div>'+
+        '</div>';
+      var t0 = startToday();
+      var ord = sync.orders || [];
+      var exp = sync.expenses || [];
+      var rev = ord.filter(function(o){ return o.status === 'PAID' && o.created_at_epoch_millis >= t0; }).reduce(function(s,o){ return s+(o.total_cents||0); },0);
+      var active = ord.filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status)<0; }).length;
+      var expSum = exp.filter(function(e){ return e.created_at_epoch_millis>=t0; }).reduce(function(s,e){ return s+(e.amount_cents||0); },0);
+      var staff = sync.staff || [];
+      var sal = staff.reduce(function(s,m){ return s+(m.salary_cents||0); },0);
+      var net = rev - expSum - Math.floor(sal/30);
+      var rg = $('rep-stats-grid');
+      if (rg) {
+        rg.innerHTML =
+          '<div class="stat s0"><div class="lbl">Today\'s net profit</div><div class="val">'+money(net)+'</div></div>'+
+          '<div class="stat s1"><div class="lbl">Today\'s paid sales</div><div class="val">'+money(rev)+'</div></div>'+
+          '<div class="stat s2"><div class="lbl">Today\'s expenses</div><div class="val">'+money(expSum)+'</div></div>'+
+          '<div class="stat s3"><div class="lbl">Active orders</div><div class="val">'+active+'</div></div>';
+      }
+      populateReportsCharts();
+      var rInit = thisMonthBoundsLocal();
+      var dfi = el.querySelector('[data-rep-date-from]');
+      var dti = el.querySelector('[data-rep-date-to]');
+      if (dfi) dfi.value = isoDateLocal(new Date(rInit.from));
+      if (dti) dti.value = isoDateLocal(new Date(rInit.toExc - 1));
+      wireReportRangeControls(el);
+      updateReportRangeSummary(el);
     }
     function renderOrders(el){
       var rows = (sync.orders||[]).slice().sort(function(a,b){ return b.created_at_epoch_millis-a.created_at_epoch_millis; }).map(function(o){
@@ -1108,12 +1926,53 @@
       el.innerHTML = '<table class="data"><thead><tr><th>Order</th><th>Status</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>';
     }
     function renderMenuAdmin(el){
-      var rows = (sync.menu_items||[]).map(function(m){
-        return '<tr><td>'+escapeHtml(m.name)+'</td><td>'+escapeHtml(m.category)+'</td><td>'+money(m.price_cents)+'</td><td><button type="button" class="btn-text" data-mid="'+m.id+'">'+(m.is_available?'On menu':'Hidden')+'</button></td></tr>';
+      var items = sync.menu_items||[];
+      var rows = items.map(function(m){
+        var src = menuItemDisplayImageUrl(m);
+        return '<tr><td style="width:56px"><img class="menu-admin-thumb" src="'+escapeHtml(src)+'" alt="" loading="lazy" draggable="false"/></td><td>'+escapeHtml(m.name)+'</td><td>'+escapeHtml(m.category)+'</td><td>'+money(m.price)+'</td><td><button type="button" class="btn-text" data-mid="'+m.id+'">'+(m.is_available?'On menu':'Hidden')+'</button></td></tr>';
       }).join('');
-      el.innerHTML = '<table class="data"><thead><tr><th>Name</th><th>Cat</th><th>Price</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+      var tbody = rows || '<tr><td colspan="5" class="hint" style="padding:12px">No menu rows yet — add below or use “Load sample…” on Home.</td></tr>';
+      var cats = resolvedMenuCategoriesWeb((sync.settings && sync.settings.menu_categories) || '');
+      var catSelect = '<label>Category</label><select id="new-menu-cat" style="width:100%;max-width:100%;box-sizing:border-box;padding:10px;border-radius:8px;font:inherit;margin-bottom:10px">';
+      cats.forEach(function(c){
+        catSelect += '<option value="'+escapeAttr(c)+'">'+escapeHtml(c)+'</option>';
+      });
+      catSelect += '</select>';
+      el.innerHTML =
+        '<p class="hint">Add dishes here (same API as the app). Price is in rupees; it is stored as paise on the server. Photos match the app defaults; upload a custom photo from the Android app to see it here.</p>'+
+        '<div style="margin-bottom:18px;padding:14px;border:1px solid var(--outline-variant);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm)">'+
+        '<p style="margin:0 0 10px;font-weight:700">Add menu item</p>'+
+        '<label>Name</label><input id="new-menu-name" placeholder="e.g. Masala dosa" />'+
+        catSelect+
+        '<p class="hint" style="margin:0 0 8px;font-size:0.8rem">Categories come from Global settings (web) or the app — edit the list there, Save, then reload sync.</p>'+
+        '<label>Price (₹)</label><input id="new-menu-price" type="number" step="0.01" min="0" placeholder="120" />'+
+        '<button type="button" class="btn btn-primary" id="btn-add-menu" style="margin-top:12px">Add to menu</button></div>'+
+        '<table class="data"><thead><tr><th></th><th>Name</th><th>Cat</th><th>Price</th><th>Availability</th></tr></thead><tbody>'+tbody+'</tbody></table>';
+      var addBtn = $('btn-add-menu');
+      if (addBtn) addBtn.onclick = function(){
+        var name = ($('new-menu-name').value||'').trim();
+        var sel = $('new-menu-cat');
+        var cat = (sel && sel.value) ? String(sel.value).trim() : '';
+        if (!cat && cats.length) cat = cats[0];
+        if (!cat) cat = 'General';
+        var rupees = parseFloat(String($('new-menu-price').value||'').replace(',', '.'));
+        if (!name) { alert('Enter a dish name.'); return; }
+        if (isNaN(rupees) || rupees < 0) { alert('Enter a valid price in rupees (e.g. 120 or 99.50).'); return; }
+        var price = Math.round(rupees * 100);
+        api('POST','/menu-items/',{name:name,category:cat,price:price,is_available:true,custom_photo_url:''}).then(function(r){
+          if (r.ok) {
+            $('new-menu-name').value = '';
+            if (sel) sel.selectedIndex = 0;
+            $('new-menu-price').value = '';
+            loadSync().then(function(){ renderMenuAdmin($('moreContent')); });
+          } else {
+            var d = r.data && (r.data.detail || r.data.non_field_errors);
+            alert('Could not add item: ' + (typeof d === 'string' ? d : JSON.stringify(d||r.raw||'error')));
+          }
+        });
+      };
       el.querySelectorAll('button[data-mid]').forEach(function(b){
-        b.onclick = function(){ var id=+b.getAttribute('data-mid'); var m=(sync.menu_items||[]).find(function(x){return x.id===id;});
+        b.onclick = function(){ var id=+b.getAttribute('data-mid'); var m=items.find(function(x){return x.id===id;});
           api('PATCH','/menu-items/'+id+'/',{is_available:!m.is_available}).then(function(){ loadSync().then(function(){ renderMenuAdmin($('moreContent')); }); });
         };
       });
@@ -1130,6 +1989,68 @@
       if (s) s.classList.remove('open');
       if (b) b.classList.remove('open');
     }
+
+    function pathSegmentToTab(){
+      var parts = (location.pathname || '/').split('/').filter(Boolean);
+      var s = (parts[0] || '').toLowerCase();
+      if (s === 'app') return 'dashboard';
+      if (s === 'workspace') return 'more';
+      if (['dashboard', 'pos', 'kitchen', 'orders', 'reports'].indexOf(s) >= 0) return s;
+      return 'dashboard';
+    }
+
+    function tabToUrl(tab){
+      if (tab === 'more') return slugToWorkspacePath(currentOpsSlug);
+      return '/' + tab + '/';
+    }
+
+    function syncUrlForTab(tab){
+      if (!$('screen-app') || $('screen-app').classList.contains('hidden')) return;
+      var url = tabToUrl(tab);
+      var cur = location.pathname || '/';
+      if (cur === url) return;
+      if (url === '/dashboard/' && (cur === '/' || cur === '/app' || cur === '/app/')) {
+        history.replaceState({ tab: tab }, '', url);
+        return;
+      }
+      history.pushState({ tab: tab }, '', url);
+    }
+
+    function segmentToTab(seg){
+      if (!seg) return null;
+      if (seg === 'workspace') return 'more';
+      if (['dashboard', 'pos', 'kitchen', 'orders', 'reports'].indexOf(seg) >= 0) return seg;
+      return null;
+    }
+
+    function applyInitialRoute(){
+      var wr = WEB_ROUTE;
+      var seg = wr.segment || '';
+      if (seg === 'sign-in') {
+        if (token) {
+          history.replaceState({}, '', '/dashboard/');
+          showApp('dashboard');
+          return;
+        }
+        $('screen-login').classList.remove('hidden');
+        $('screen-app').classList.add('hidden');
+        return;
+      }
+      if (seg === 'workspace' && wr.module && token) {
+        showApp('more', { workspaceModule: wr.module });
+        return;
+      }
+      var wantTab = segmentToTab(seg);
+      if (token) {
+        showApp(wantTab || pathSegmentToTab());
+      } else {
+        if (wantTab) sessionStorage.setItem('crm_tab_after_login', seg);
+        if (seg === 'workspace' && wr.module) sessionStorage.setItem('crm_workspace_module', wr.module);
+        $('screen-login').classList.remove('hidden');
+        $('screen-app').classList.add('hidden');
+      }
+    }
+
     function showTab(tab, opts){
       opts = opts || {};
       if (tab !== 'more') {
@@ -1144,12 +2065,14 @@
       });
       var navMoreEl = $('nav-more');
       if (navMoreEl) navMoreEl.classList.toggle('on', tab === 'more');
-      var titles = { dashboard: 'Dashboard', pos: 'Point of sale', kitchen: 'Kitchen', more: 'Operations' };
+      var titles = { dashboard: 'Dashboard', pos: 'Point of sale', kitchen: 'Kitchen', orders: 'Order history', reports: 'Reports', more: 'Operations' };
       var tb = $('topbarTitle');
       if (tb) tb.textContent = titles[tab] || 'Restaurant CRM';
       if (tab==='dashboard') dashStats();
       if (tab==='pos') renderPos();
       if (tab==='kitchen') renderKitchen();
+      if (tab==='orders' && sync) renderOrders($('orders-body'));
+      if (tab==='reports' && sync) { dashStats(); renderReports($('reports-body')); }
       if (tab==='more'){
         if (!opts.preserveMoreModule) {
           currentOpsSlug = null;
@@ -1158,6 +2081,7 @@
         }
         renderOpsCards();
       }
+      if (!opts.skipUrl) syncUrlForTab(tab);
       closeMobileNav();
     }
 
@@ -1182,6 +2106,34 @@
         };
       }
       if (bd) bd.onclick = closeMobileNav;
+      var dlApk = $('sidebarDownloadApk');
+      if (dlApk) {
+        dlApk.addEventListener('click', function(e){
+          e.preventDefault();
+          fetch('/download/android-app/')
+            .then(function(r){
+              if (!r.ok) {
+                return r.text().then(function(t){
+                  alert(t.trim() || ('Download failed (HTTP ' + r.status + ')'));
+                });
+              }
+              return r.blob();
+            })
+            .then(function(blob){
+              if (!blob || blob.size === 0) return;
+              var u = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.href = u;
+              a.download = 'restaurant-crm.apk';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(u);
+              closeMobileNav();
+            })
+            .catch(function(){ alert('Could not download the APK. Check your connection.'); });
+        });
+      }
     }
 
     function applyModulesNav(){
@@ -1224,9 +2176,11 @@
       $('planBackdrop').onclick = function(e){ if(e.target=== $('planBackdrop')) $('planBackdrop').classList.remove('open'); };
     }
 
-    function showApp(){
+    function showApp(initialTab, appOpts){
+      appOpts = appOpts || {};
       $('screen-login').classList.add('hidden');
       $('screen-app').classList.remove('hidden');
+      var tab0 = initialTab || 'dashboard';
       loadSync().then(function(ok){
         if(!ok){ alert('Could not load venue data'); return; }
         applyModulesNav();
@@ -1234,6 +2188,23 @@
         renderPos();
         renderKitchen();
         renderOpsCards();
+        if (tab0 === 'more' && appOpts.workspaceModule) {
+          var flags = parseModules((sync&&sync.settings&&sync.settings.modules_json)||'');
+          var mod = WEB_MODULES.find(function(x){ return x.slug === appOpts.workspaceModule; });
+          showTab('more', { preserveMoreModule: true, skipUrl: false });
+          if (mod && hubOk(mod.slug, flags)) {
+            openModule(mod.slug, mod.title, { skipUrl: true });
+          } else {
+            currentOpsSlug = null;
+            setSidebarOpsActive(null);
+            $('more-detail').classList.add('hidden');
+            $('more-hub').classList.remove('hidden');
+            renderOpsCards();
+          }
+          pushWorkspaceBrowserUrl();
+          return;
+        }
+        showTab(tab0, { skipUrl: false });
       });
     }
 
@@ -1243,7 +2214,14 @@
       if (!login_id || !password) { $('loginErr').textContent='Enter login and password'; $('loginErr').classList.remove('hidden'); return; }
       api('POST','/auth/login/',{login_id:login_id,password:password}).then(function(r){
         if (!r.ok || !r.data || !r.data.token){ $('loginErr').textContent=(r.data&&r.data.detail)||'Login failed'; $('loginErr').classList.remove('hidden'); return; }
-        token = r.data.token; localStorage.setItem(TOKEN_KEY, token); showApp();
+        token = r.data.token; localStorage.setItem(TOKEN_KEY, token);
+        var raw = sessionStorage.getItem('crm_tab_after_login') || '';
+        sessionStorage.removeItem('crm_tab_after_login');
+        var wm = sessionStorage.getItem('crm_workspace_module') || '';
+        sessionStorage.removeItem('crm_workspace_module');
+        var t = segmentToTab(raw);
+        if (t === 'more' && wm) showApp('more', { workspaceModule: wm });
+        else showApp(t);
       });
     };
     $('btnSeed').onclick = function(){ api('POST','/sync/seed-defaults/',{}).then(function(r){ if(r.ok) loadSync().then(function(){ dashStats(); renderPos(); alert('Sample data loaded.'); }); else alert('Seed failed (maybe already has data).'); }); };
@@ -1255,6 +2233,7 @@
       setOpsNavExpanded(false);
       closeMobileNav();
       $('screen-app').classList.add('hidden'); $('screen-login').classList.remove('hidden');
+      history.replaceState({}, '', '/sign-in/');
     }
     $('btnLogout').onclick = doLogout;
     $('btnSidebarLogout').onclick = doLogout;
@@ -1267,7 +2246,42 @@
 
     wireNav();
     wireProfile();
-    if (token) showApp();
+    window.addEventListener('popstate', function(){
+      var parts = (location.pathname || '/').split('/').filter(Boolean);
+      var s0 = (parts[0] || '').toLowerCase();
+      if (s0 === 'sign-in' && token) {
+        history.replaceState({}, '', '/dashboard/');
+        if (!$('screen-app').classList.contains('hidden')) showTab('dashboard', { skipUrl: true });
+        return;
+      }
+      if ($('screen-app').classList.contains('hidden')) return;
+      if (s0 === 'workspace') {
+        var rawMod = parts[1] ? parts[1].toLowerCase().replace(/-/g, '_') : '';
+        showTab('more', { preserveMoreModule: true, skipUrl: true });
+        if (rawMod && sync) {
+          var mod = WEB_MODULES.find(function(x){ return x.slug === rawMod; });
+          var flags = parseModules((sync.settings&&sync.settings.modules_json)||'');
+          if (mod && hubOk(mod.slug, flags)) {
+            openModule(mod.slug, mod.title, { skipUrl: true });
+          } else {
+            currentOpsSlug = null;
+            setSidebarOpsActive(null);
+            $('more-detail').classList.add('hidden');
+            $('more-hub').classList.remove('hidden');
+            renderOpsCards();
+          }
+        } else {
+          currentOpsSlug = null;
+          setSidebarOpsActive(null);
+          $('more-detail').classList.add('hidden');
+          $('more-hub').classList.remove('hidden');
+          renderOpsCards();
+        }
+        return;
+      }
+      showTab(pathSegmentToTab(), { skipUrl: true });
+    });
+    applyInitialRoute();
   })();
   </script>
 </body>

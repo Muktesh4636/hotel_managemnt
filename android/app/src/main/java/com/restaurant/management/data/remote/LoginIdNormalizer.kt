@@ -10,6 +10,13 @@ object LoginIdNormalizer {
                 t.all { ch ->
                     ch.isDigit() || ch == '+' || ch == ' ' || ch == '-' || ch == '(' || ch == ')'
                 }
-        return if (phoneLike) digits else t.lowercase()
+        if (!phoneLike) return t.lowercase()
+        // Match Django API: +91XXXXXXXXXX → 10-digit domestic (username in DB).
+        if (digits.length == 12 && digits.startsWith("91")) return digits.drop(2)
+        if (digits.length == 11 && digits.startsWith("0")) {
+            val rest = digits.drop(1)
+            if (rest.length == 10) return rest
+        }
+        return digits
     }
 }
