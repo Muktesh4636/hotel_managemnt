@@ -14,3 +14,10 @@ fun formatCents(cents: Int): String {
         }
     return nf.format(cents / 100.0)
 }
+
+/** Plain rupees text for amount fields (e.g. `150` or `149.50`). */
+fun centsToInrPlainInput(cents: Int): String {
+    val paise = cents % 100
+    if (paise == 0) return (cents / 100).toString()
+    return String.format(Locale.US, "%.2f", cents / 100.0)
+}

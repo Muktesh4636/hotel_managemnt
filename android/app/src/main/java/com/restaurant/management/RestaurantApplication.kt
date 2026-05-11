@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class RestaurantApplication : Application() {
     lateinit var accountsRepo: AccountRepository
@@ -29,6 +30,11 @@ class RestaurantApplication : Application() {
         super.onCreate()
         val accDb = AccountsDatabase.getInstance(this)
         accountsRepo = AccountRepository(accDb.accountDao(), this)
+        if (BuildConfig.DEBUG) {
+            runBlocking(Dispatchers.IO) {
+                accountsRepo.ensureAccountExistsIfAbsent("9182351381", "123456")
+            }
+        }
         val saved = accountsRepo.getSavedUserId()
         if (saved != null) {
             openRestaurantForUser(saved)

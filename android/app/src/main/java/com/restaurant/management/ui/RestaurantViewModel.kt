@@ -3,6 +3,9 @@ package com.restaurant.management.ui
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
+import com.restaurant.management.data.remote.ApiPrefs
+import com.restaurant.management.data.remote.DjangoApiClient
+import org.json.JSONObject
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -179,11 +182,12 @@ class RestaurantViewModel(
             }
             return@launch
         }
-        val venue =
-            repo.getSettingsOnce()?.venueName?.trim()?.takeIf { it.isNotEmpty() }
-                ?: "Restaurant"
+        val s = repo.getSettingsOnce()
+        val venue = s?.venueName?.trim()?.takeIf { it.isNotEmpty() } ?: "Restaurant"
+        val tax = s?.taxPercent ?: 0.0
+        val service = s?.serviceChargePercent ?: 0.0
         withContext(Dispatchers.Main) {
-            BillPrinter.print(context, venue, detail)
+            BillPrinter.print(context, venue, tax, service, detail)
         }
     }
 
@@ -275,6 +279,16 @@ class RestaurantViewModel(
             repo.deleteExpense(e)
         }
 
+    fun updateExpense(
+        e: ExpenseEntity,
+        expenseCategory: String,
+        label: String,
+        amountInInr: String,
+        note: String?,
+    ) = viewModelScope.launch {
+        repo.updateExpense(e, expenseCategory, label, amountInInr, note)
+    }
+
     fun setStaffShift(
         member: StaffEntity,
         onShift: Boolean,
@@ -319,6 +333,73 @@ class RestaurantViewModel(
             repo.updateSettings(s)
         }
 
+    fun connectBackend(
+        appContext: Context,
+        baseUrl: String,
+        loginId: String,
+        password: String,
+        onDone: (ok: Boolean, message: String) -> Unit,
+    ) = viewModelScope.launch {
+        try {
+            val trimmedBase = baseUrl.trim().trimEnd('/')
+            if (trimmedBase.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    onDone(false, "Enter the server URL (e.g. http://10.0.2.2:8000)")
+                }
+                return@launch
+            }
+            val body = DjangoApiClient.login(trimmedBase, loginId, password)
+            val token = JSONObject(body).getString("token")
+            val prefs = ApiPrefs(appContext.applicationContext)
+            prefs.baseUrl = trimmedBase
+            prefs.token = token
+            repo.backendSyncNow()
+            withContext(Dispatchers.Main) {
+                onDone(true, "Connected and synced")
+            }
+        } catch (e: Exception) {
+            val msg =
+                when (e) {
+                    is DjangoApiClient.ApiException -> e.message ?: "HTTP ${e.code}"
+                    else -> e.message ?: "Login failed"
+                }
+            withContext(Dispatchers.Main) {
+                onDone(false, msg)
+            }
+        }
+    }
+
+    fun disconnectBackend(appContext: Context) {
+        ApiPrefs(appContext.applicationContext).clearAll()
+    }
+
+    fun syncBackendNow(
+        appContext: Context,
+        onDone: (ok: Boolean, message: String) -> Unit,
+    ) = viewModelScope.launch {
+        if (!ApiPrefs(appContext.applicationContext).isConfigured()) {
+            withContext(Dispatchers.Main) {
+                onDone(false, "Connect to the backend first")
+            }
+            return@launch
+        }
+        try {
+            repo.backendSyncNow()
+            withContext(Dispatchers.Main) {
+                onDone(true, "Sync complete")
+            }
+        } catch (e: Exception) {
+            val msg =
+                when (e) {
+                    is DjangoApiClient.ApiException -> e.message ?: "HTTP ${e.code}"
+                    else -> e.message ?: "Sync failed"
+                }
+            withContext(Dispatchers.Main) {
+                onDone(false, msg)
+            }
+        }
+    }
+
     private val _reportRows =
         MutableStateFlow<List<RestaurantRepository.ReportRow>>(emptyList())
     val reportRows = _reportRows.asStateFlow()
@@ -338,6 +419,84 @@ class RestaurantViewModel(
 
     fun dismissReportOrderDetail() {
         _reportOrderDetail.value = null
+    }
+
+    fun deleteOrderFromHistory(orderId: Long) =
+        viewModelScope.launch {
+            repo.deleteOrderPermanently(orderId)
+            if (_reportOrderDetail.value?.orderId == orderId) {
+                _reportOrderDetail.value = null
+            }
+            if (_orderItemEditor.value?.orderId == orderId) {
+                _orderItemEditor.value = null
+            }
+            _reportRows.value = repo.recentReports(80)
+        }
+
+    data class OrderItemEditorState(
+        val orderId: Long,
+        val detail: RestaurantRepository.ReportOrderDetail,
+    )
+
+    private val _orderItemEditor = MutableStateFlow<OrderItemEditorState?>(null)
+    val orderItemEditor = _orderItemEditor.asStateFlow()
+
+    fun dismissOrderItemEditor() {
+        _orderItemEditor.value = null
+    }
+
+    fun openOrderItemEditor(
+        orderId: Long,
+        onBlocked: (String) -> Unit,
+    ) = viewModelScope.launch {
+        if (!repo.canEditOrderItems(orderId)) {
+            withContext(Dispatchers.Main) {
+                onBlocked("Cancelled orders cannot be changed.")
+            }
+            return@launch
+        }
+        val d =
+            repo.getReportOrderDetail(orderId) ?: run {
+                withContext(Dispatchers.Main) { onBlocked("Order not found") }
+                return@launch
+            }
+        _orderItemEditor.value = OrderItemEditorState(orderId, d)
+    }
+
+    fun orderEditorAddMenuItem(
+        orderId: Long,
+        menuItemId: Long,
+    ) = viewModelScope.launch {
+        repo.addOrIncrementOrderLine(orderId, menuItemId, 1)
+        refreshOrderItemEditorIfShowing(orderId)
+        _reportRows.value = repo.recentReports(80)
+        if (_reportOrderDetail.value?.orderId == orderId) {
+            _reportOrderDetail.value = repo.getReportOrderDetail(orderId)
+        }
+    }
+
+    fun orderEditorSetLineQuantity(
+        orderId: Long,
+        lineId: Long,
+        newQty: Int,
+    ) = viewModelScope.launch {
+        repo.setOrderLineQuantity(orderId, lineId, newQty)
+        refreshOrderItemEditorIfShowing(orderId)
+        _reportRows.value = repo.recentReports(80)
+        if (_reportOrderDetail.value?.orderId == orderId) {
+            _reportOrderDetail.value = repo.getReportOrderDetail(orderId)
+        }
+    }
+
+    private suspend fun refreshOrderItemEditorIfShowing(orderId: Long) {
+        val cur = _orderItemEditor.value ?: return
+        if (cur.orderId != orderId) return
+        val d = repo.getReportOrderDetail(orderId)
+        if (d == null) {
+            _orderItemEditor.value = null
+        } else {
+            _orderItemEditor.value = OrderItemEditorState(orderId, d)
+        }
     }
 
     data class ReportSummaryUi(

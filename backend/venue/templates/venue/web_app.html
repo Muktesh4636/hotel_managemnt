@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#C2543D" />
+  <meta name="description" content="Restaurant management CRM — same warm bistro design as the Android app. Use in the browser at your desk or the APK on the floor; one account, live venue data." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="application-name" content="Restaurant CRM" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title>Restaurant management CRM</title>
+  <style>
+    :root {
+      --cream: #FFFBF7; --ink: #2C2420; --primary: #C2543D; --on-primary: #fff;
+      --primary-container: #FFE8E0; --on-primary-container: #5C1F14;
+      --secondary: #3D6B58; --on-secondary: #fff;
+      --secondary-container: #D4EBE3; --on-secondary-container: #1A3D32;
+      --tertiary: #C9933D; --tertiary-container: #FFF3D6; --on-tertiary-container: #5C4010;
+      --surface: #fff; --surface-variant: #F0E8E2; --on-surface-variant: #5C534D;
+      --outline-variant: #E0D5CD; --nav-h: 64px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; }
+    .hidden { display: none !important; }
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .login-card { background: var(--surface); border-radius: 16px; padding: 28px; width: 100%; max-width: 400px; box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+    .login-card h1 { margin: 0 0 6px; color: var(--primary); font-size: 1.45rem; }
+    .login-card p { margin: 0 0 18px; color: var(--on-surface-variant); font-size: 0.9rem; }
+    label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--on-surface-variant); margin: 10px 0 4px; }
+    input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--outline-variant); font-size: 1rem; }
+    .btn { border: none; border-radius: 10px; padding: 12px 16px; font-weight: 600; font-size: 0.95rem; cursor: pointer; }
+    .btn-primary { background: var(--primary); color: var(--on-primary); width: 100%; margin-top: 16px; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .err { color: #B71C1C; font-size: 0.85rem; margin-top: 10px; }
+    #app-shell { min-height: 100vh; display: flex; flex-direction: column; padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px)); }
+    .app-main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .hdr { background: var(--primary); color: var(--on-primary); padding: 12px 16px; box-shadow: 0 2px 4px rgba(0,0,0,.12); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .hdr.t2 { background: var(--secondary); }
+    .hdr.t3 { background: var(--tertiary); color: var(--on-tertiary-container); }
+    .hdr h1 { margin: 0; font-size: 1.25rem; font-weight: 700; }
+    .hdr p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.92; }
+    .hdr .btn-icon { background: transparent; border: none; color: inherit; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .pad { padding: 16px; max-width: 900px; margin: 0 auto; }
+    .hero { background: rgba(255,232,224,0.85); border-radius: 12px; padding: 14px; margin-bottom: 12px; display: flex; gap: 14px; align-items: center; }
+    .stat { border-radius: 12px; padding: 16px; margin-bottom: 10px; }
+    .stat.s0 { background: var(--primary-container); color: var(--on-primary-container); }
+    .stat.s1 { background: var(--secondary-container); color: var(--on-secondary-container); }
+    .stat.s2 { background: var(--tertiary-container); color: var(--on-tertiary-container); }
+    .stat .lbl { font-size: 0.78rem; opacity: 0.88; }
+    .stat .val { font-size: 1.35rem; font-weight: 700; margin-top: 4px; }
+    .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--primary-container); color: var(--on-primary-container); display: flex; justify-content: space-around; align-items: flex-start; padding-top: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,.08); z-index: 40; }
+    .nav-item { flex: 1; text-align: center; border: none; background: none; cursor: pointer; padding: 4px 2px; color: inherit; font-size: 0.68rem; font-weight: 500; opacity: 0.72; }
+    .nav-item svg { width: 24px; height: 24px; display: block; margin: 0 auto 2px; }
+    .nav-item.on { opacity: 1; color: var(--primary); font-weight: 700; }
+    .nav-item.on svg { stroke: var(--primary); fill: var(--primary); }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+    .chip { border: none; border-radius: 20px; padding: 8px 14px; font-size: 0.85rem; cursor: pointer; background: var(--surface-variant); color: var(--ink); }
+    .chip.on { background: var(--secondary-container); color: var(--on-secondary-container); font-weight: 600; }
+    .menu-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--outline-variant); gap: 8px; }
+    .menu-row .qty { display: flex; align-items: center; gap: 6px; }
+    .menu-row .qty button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface); cursor: pointer; font-size: 1.1rem; }
+    .dock { background: var(--surface); padding: 16px; margin-top: 8px; border-radius: 12px 12px 0 0; box-shadow: 0 -2px 12px rgba(0,0,0,.06); }
+    .row-btns { display: flex; gap: 8px; margin-top: 10px; }
+    .row-btns .btn { flex: 1; }
+    .btn-outline { background: transparent; border: 1px solid var(--outline-variant); color: var(--ink); }
+    .card { background: var(--surface-variant); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+    .card.k { background: var(--secondary-container); color: var(--on-secondary-container); }
+    .ops-card { border-radius: 12px; margin-bottom: 10px; padding: 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; border: none; width: 100%; text-align: left; font: inherit; box-shadow: 0 1px 2px rgba(44,36,32,.06); }
+    .ops-card.v0 { background: var(--primary-container); color: var(--on-primary-container); }
+    .ops-card.v1 { background: var(--secondary-container); color: var(--on-secondary-container); }
+    .ops-card.v2 { background: var(--tertiary-container); color: var(--on-tertiary-container); }
+    .ops-badge { width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px; padding: 4px; display: flex; align-items: center; justify-content: center; }
+    .ops-badge-inner { width: 100%; height: 100%; border-radius: 10px; background: rgba(255,255,255,.95); display: flex; align-items: center; justify-content: center; font-size: 1.35rem; }
+    .back-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .back-bar button { border: none; background: none; color: var(--primary); font-weight: 600; cursor: pointer; font-size: 0.95rem; }
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(44,36,32,.45); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .modal-backdrop.open { display: flex; }
+    #planBackdrop { z-index: 60; }
+    .modal { background: #fff; border-radius: 16px; max-width: 420px; width: 100%; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,.2); }
+    .modal-wide { max-width: 480px; }
+    .modal-h { padding: 16px 18px 10px; border-bottom: 1px solid var(--outline-variant); }
+    .modal-h h2 { margin: 0; font-size: 1.1rem; }
+    .modal-body { padding: 14px 18px; overflow-y: auto; flex: 1; }
+    .modal-actions { padding: 10px 14px; border-top: 1px solid var(--outline-variant); display: flex; justify-content: flex-end; }
+    .btn-text { border: none; background: transparent; color: var(--primary); font-weight: 600; padding: 10px 14px; cursor: pointer; border-radius: 8px; }
+    .plan-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--outline-variant); cursor: pointer; width: 100%; text-align: left; border-left: none; border-right: none; border-top: none; background: none; font: inherit; }
+    .plan-price { color: var(--primary); font-weight: 700; min-width: 4.2rem; }
+    .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .pay-btn { padding: 10px 6px; border-radius: 10px; border: none; background: var(--primary); color: #fff; font-weight: 600; font-size: 0.8rem; cursor: pointer; }
+    .pay-btn.sec { background: var(--ink); }
+    table.data { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    table.data th, table.data td { padding: 8px 6px; border-bottom: 1px solid var(--outline-variant); text-align: left; }
+    .hint { font-size: 0.82rem; color: var(--on-surface-variant); line-height: 1.4; margin: 8px 0; }
+    .platform-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+    .platform-pill { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px; background: var(--secondary-container); color: var(--on-secondary-container); }
+    .platform-pill.web { background: var(--primary-container); color: var(--on-primary-container); }
+    .crm-tag { display: inline-block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; color: var(--secondary); margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div id="screen-login" class="login-wrap">
+    <div class="login-card">
+      <span class="crm-tag">Operations CRM</span>
+      <h1>Restaurant management</h1>
+      <p>Same palette and flows as the <strong>Android APK</strong> — use this in the <strong>browser</strong> for back-office and the app on devices. One venue account (phone or username + password).</p>
+      <label>Login</label>
+      <input id="loginId" type="text" autocomplete="username" placeholder="Phone or username" />
+      <label>Password</label>
+      <input id="loginPw" type="password" autocomplete="current-password" />
+      <div id="loginErr" class="err hidden"></div>
+      <button type="button" class="btn btn-primary" id="btnLogin">Sign in</button>
+    </div>
+  </div>
+
+  <div id="screen-app" class="hidden">
+    <div id="app-shell">
+      <div class="app-main">
+        <div id="page-dashboard" class="page">
+          <header class="hdr"><div><h1>Dashboard</h1><p>Today's snapshot</p></div>
+            <button type="button" class="btn-icon" id="btnLogout" title="Sign out" aria-label="Sign out">⎋</button>
+          </header>
+          <div class="pad">
+            <div class="hero"><div style="font-size:2.5rem">🍲</div><div><strong>From kitchen to table</strong><p class="hint" style="margin:6px 0 0">CRM snapshot for your venue — same Material-style theme as the APK (terracotta, sage, honey on cream).</p><div class="platform-row"><span class="platform-pill web">Browser CRM</span><span class="platform-pill">Android APK</span></div></div></div>
+            <div id="dash-stats"></div>
+            <p class="hint">Net profit uses paid sales today, minus expenses logged today, and one day’s share of staff salaries (monthly ÷ 30).</p>
+            <button type="button" class="btn btn-primary" id="btnSeed" style="margin-top:8px;background:var(--secondary)">Load sample tables &amp; menu (once)</button>
+          </div>
+        </div>
+        <div id="page-pos" class="page hidden">
+          <header class="hdr t2"><div><h1>Point of sale</h1><p>Counter &amp; takeaway</p></div></header>
+          <div class="pad">
+            <p class="hint">Tap category chips, adjust quantities, then place order.</p>
+            <div class="chip-row" id="pos-chips"></div>
+            <div id="pos-menu"></div>
+            <div id="pos-orders"></div>
+            <div class="dock">
+              <strong>Cart total: <span id="cart-total">₹0</span></strong>
+              <div class="row-btns">
+                <button type="button" class="btn btn-primary" id="btnPlace">Place order</button>
+                <button type="button" class="btn btn-outline" id="btnClear">Clear cart</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="page-kitchen" class="page hidden">
+          <header class="hdr t3"><div><h1>Kitchen</h1><p>Tap a line to bump status</p></div></header>
+          <div class="pad" id="kitchen-body"></div>
+        </div>
+        <div id="page-more" class="page hidden">
+          <header class="hdr"><div><h1>Operations</h1><p>Back-office modules — scroll for more</p></div>
+            <button type="button" class="btn-icon" id="openProfile" aria-label="Profile"><svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
+          </header>
+          <div class="pad" id="more-hub">
+            <p class="hint">Choose a module — same hub as the APK. Web and app share this live venue data.</p>
+            <div id="ops-cards"></div>
+          </div>
+          <div class="pad hidden" id="more-detail">
+            <div class="back-bar"><button type="button" id="moreBack">← Back</button><strong id="moreTitle"></strong></div>
+            <div id="moreContent"></div>
+          </div>
+        </div>
+      </div>
+      <nav class="bottom-nav" id="bottom-nav">
+        <button type="button" class="nav-item on" data-tab="dashboard"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home</button>
+        <button type="button" class="nav-item" data-tab="pos"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>POS</button>
+        <button type="button" class="nav-item hidden" data-tab="kitchen" id="nav-kitchen"><span style="font-size:1.35rem;line-height:1;display:block">🍳</span>Kitchen</button>
+        <button type="button" class="nav-item" data-tab="more"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>More</button>
+      </nav>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="profileBackdrop"><div class="modal"><div class="modal-h"><h2>Your profile</h2></div>
+    <div class="modal-body">
+      <p class="hint" id="prof-user"></p>
+      <p class="hint" id="prof-venue"></p>
+      <div style="height:1px;background:var(--outline-variant);margin:12px 0"></div>
+      <p style="font-weight:700;margin:0 0 6px">Subscription plans</p>
+      <p class="hint" style="margin-top:0">Tap a plan for details and to pay.</p>
+      <div id="plan-rows"></div>
+    </div>
+    <div class="modal-actions"><button type="button" class="btn-text" id="closeProfile">Close</button></div>
+  </div></div>
+
+  <div class="modal-backdrop" id="planBackdrop"><div class="modal modal-wide"><div class="modal-h"><h2 id="planDetailTitle">Plan</h2></div>
+    <div class="modal-body" id="planDetailBody"></div>
+    <div class="modal-actions"><button type="button" class="btn-text" id="closePlan">Back</button></div>
+  </div></div>
+
+  {% json_script web_modules "web-modules-data" %}
+  {% json_script billing_plans "billing-plans-data" %}
+
+  <script>
+  (function(){
+    var TOKEN_KEY = 'restaurant_web_token';
+    var UPI_VPA = "{{ upi_vpa|escapejs }}";
+    var UPI_PKG = { phonepe:'com.phonepe.app', gpay:'com.google.android.apps.nbu.paisa.user', paytm:'net.one97.paytm' };
+    var WEB_MODULES = JSON.parse(document.getElementById('web-modules-data').textContent);
+    var BILLING_PLANS = JSON.parse(document.getElementById('billing-plans-data').textContent);
+    var sync = null;
+    var cart = {};
+    var posCat = null;
+    var token = localStorage.getItem(TOKEN_KEY);
+
+    function $(id){ return document.getElementById(id); }
+    function money(c){ return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format((c||0)/100); }
+    function startToday(){ var d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+    function api(method, path, body){
+      var h = { 'Content-Type':'application/json' };
+      if (token) h['Authorization'] = 'Token ' + token;
+      return fetch('/api/v1' + path, { method: method, headers: h, body: body?JSON.stringify(body):undefined })
+        .then(function(r){ return r.text().then(function(t){ var j=null; try{j=t?JSON.parse(t):null}catch(e){} return {ok:r.ok,status:r.status,data:j,raw:t}; }); });
+    }
+    function parseModules(raw){
+      if (!raw || !String(raw).trim()) return {kitchen:true,qrMenu:true,inventory:true,staff:true,expenses:true,tablesFloor:false,reservations:false,suppliersPo:false,wasteLog:false,cashDrawer:false,customerFeedback:false};
+      try { var o=JSON.parse(raw); return {
+        kitchen: o.kitchen!==false, qrMenu: o.qrMenu!==false, inventory: o.inventory!==false, staff: o.staff!==false, expenses: o.expenses!==false,
+        tablesFloor:!!o.tablesFloor, reservations:!!o.reservations, suppliersPo:!!o.suppliersPo, wasteLog:!!o.wasteLog, cashDrawer:!!o.cashDrawer, customerFeedback:!!o.customerFeedback
+      };} catch(e){ return parseModules(''); }
+    }
+    function hubOk(slug, f){
+      if (['orders','menu_admin','settings','reports'].indexOf(slug)>=0) return true;
+      if (slug==='qr_menu') return f.qrMenu;
+      if (slug==='inventory') return f.inventory;
+      if (slug==='expenses') return f.expenses;
+      if (slug==='staff') return f.staff;
+      if (slug==='tables_floor') return f.tablesFloor;
+      if (slug==='reservations') return f.reservations;
+      if (slug==='suppliers_po') return f.suppliersPo;
+      if (slug==='waste_log') return f.wasteLog;
+      if (slug==='cash_drawer') return f.cashDrawer;
+      if (slug==='customer_feedback') return f.customerFeedback;
+      return true;
+    }
+    function loadSync(){ return api('GET','/sync/full/').then(function(r){ if(r.ok) sync=r.data; return r.ok; }); }
+
+    function dashStats(){
+      var t0 = startToday();
+      var orders = (sync&&sync.orders)||[];
+      var rev = orders.filter(function(o){ return o.status==='PAID' && o.created_at_epoch_millis>=t0; }).reduce(function(s,o){ return s+(o.total_cents||0); },0);
+      var active = orders.filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status)<0; }).length;
+      var exp = (sync&&sync.expenses)||[];
+      var expSum = exp.filter(function(e){ return e.created_at_epoch_millis>=t0; }).reduce(function(s,e){ return s+(e.amount_cents||0); },0);
+      var staff = (sync&&sync.staff)||[];
+      var sal = staff.reduce(function(s,m){ return s+(m.salary_cents||0); },0);
+      var net = rev - expSum - Math.floor(sal/30);
+      $('dash-stats').innerHTML =
+        '<div class="stat s0"><div class="lbl">Today\'s net profit</div><div class="val">'+money(net)+'</div></div>'+
+        '<div class="stat s1"><div class="lbl">Active orders</div><div class="val">'+active+'</div></div>';
+    }
+
+    function renderPos(){
+      if (!sync) return;
+      var menu = (sync.menu_items||[]).filter(function(m){ return m.is_available; });
+      var cats = []; menu.forEach(function(m){ if (cats.indexOf(m.category)<0) cats.push(m.category); });
+      var chipHtml = '<button type="button" class="chip'+(posCat===null?' on':'')+'" data-cat="">All</button>';
+      cats.forEach(function(c){ chipHtml += '<button type="button" class="chip'+(posCat===c?' on':'')+'" data-cat="'+escapeHtml(c)+'">'+escapeHtml(c)+'</button>'; });
+      $('pos-chips').innerHTML = chipHtml;
+      $('pos-chips').querySelectorAll('.chip').forEach(function(b){
+        b.onclick = function(){ posCat = b.getAttribute('data-cat')||null; if(posCat==='') posCat=null; renderPos(); };
+      });
+      var list = menu.filter(function(m){ return posCat===null || m.category===posCat; });
+      var mh = '';
+      list.forEach(function(m){
+        var q = cart[m.id]||0;
+        mh += '<div class="menu-row"><div><strong>'+escapeHtml(m.name)+'</strong><br/><span style="font-size:0.85rem;color:#5C534D">'+money(m.price_cents)+'</span></div>'+
+          '<div class="qty"><button type="button" data-d="-1" data-id="'+m.id+'">−</button><span>'+q+'</span><button type="button" data-d="1" data-id="'+m.id+'">+</button></div></div>';
+      });
+      $('pos-menu').innerHTML = mh || '<p class="hint">No menu items. Use “Load sample…” on Home or add items in Global settings.</p>';
+      $('pos-menu').querySelectorAll('.qty button').forEach(function(b){
+        b.onclick = function(){ var id=+b.getAttribute('data-id'), d=+b.getAttribute('data-d'); cart[id]=Math.max(0,(cart[id]||0)+d); if(!cart[id]) delete cart[id]; renderPos(); };
+      });
+      var total = 0; Object.keys(cart).forEach(function(id){ var m=menu.find(function(x){ return x.id==+id; }); if(m) total += m.price_cents*(cart[id]||0); });
+      $('cart-total').textContent = money(total);
+      var open = (sync.orders||[]).filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status)<0; });
+      var oh = '<p class="hint"><strong>Active orders</strong></p>';
+      open.forEach(function(o){
+        oh += '<div class="card"><div>Order #'+o.id+' · '+o.status+' · '+money(o.total_cents)+'</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">';
+        if (o.status==='OPEN') oh += '<button type="button" class="btn btn-primary" style="padding:8px 12px;font-size:0.85rem" data-act="kitchen" data-oid="'+o.id+'">Send kitchen</button>';
+        if (['PAID','CANCELLED'].indexOf(o.status)<0) oh += '<button type="button" class="btn btn-primary" style="padding:8px 12px;font-size:0.85rem;background:#3D6B58" data-act="pay" data-oid="'+o.id+'">Pay</button>';
+        if (o.status!=='PAID') oh += '<button type="button" class="btn btn-outline" style="padding:8px 12px;font-size:0.85rem" data-act="cancel" data-oid="'+o.id+'">Cancel</button>';
+        oh += '</div></div>';
+      });
+      $('pos-orders').innerHTML = open.length?oh:'';
+      $('pos-orders').querySelectorAll('button[data-act]').forEach(function(b){
+        b.onclick = function(){ var oid=+b.getAttribute('data-oid'), act=b.getAttribute('data-act');
+          if (act==='pay') api('PATCH','/orders/'+oid+'/',{status:'PAID'}).then(function(){ loadSync().then(function(){ renderPos(); dashStats(); }); });
+          else if (act==='cancel') api('PATCH','/orders/'+oid+'/',{status:'CANCELLED'}).then(function(){ loadSync().then(function(){ renderPos(); dashStats(); }); });
+          else if (act==='kitchen') api('PATCH','/orders/'+oid+'/',{status:'IN_KITCHEN'}).then(function(){ loadSync().then(function(){ renderPos(); dashStats(); }); });
+        };
+      });
+    }
+
+    function renderKitchen(){
+      if (!sync) return;
+      var menuMap = {}; (sync.menu_items||[]).forEach(function(m){ menuMap[m.id]=m; });
+      var orders = (sync.orders||[]).filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status)<0; });
+      var html = '';
+      orders.forEach(function(o){
+        html += '<div class="card k"><strong>Order #'+o.id+' · '+o.status+'</strong>';
+        (o.lines||[]).forEach(function(line){
+          var nm = (menuMap[line.menu_item_id]||{}).name || ('Item #'+line.menu_item_id);
+          html += '<div style="margin-top:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,.35);display:flex;justify-content:space-between;align-items:center;cursor:pointer" class="kline" data-lid="'+line.id+'" data-oid="'+o.id+'">'+
+            '<span>'+escapeHtml(nm)+' × '+line.quantity+'</span><span style="font-size:0.8rem;font-weight:700">'+line.kitchen_status+' →</span></div>';
+        });
+        html += '</div>';
+      });
+      $('kitchen-body').innerHTML = html || '<p class="hint">No tickets in the kitchen queue.</p>';
+      $('kitchen-body').querySelectorAll('.kline').forEach(function(row){
+        row.onclick = function(){ advanceLine(+row.getAttribute('data-lid'), +row.getAttribute('data-oid')); };
+      });
+    }
+
+    function advanceLine(lineId, orderId){
+      var o = (sync.orders||[]).find(function(x){ return x.id===orderId; });
+      var line = o && (o.lines||[]).find(function(l){ return l.id===lineId; });
+      if (!line) return;
+      var next = line.kitchen_status==='QUEUED' ? 'COOKING' : 'READY';
+      api('PATCH','/order-lines/'+lineId+'/',{kitchen_status:next}).then(function(){
+        loadSync().then(function(){
+          var o2 = (sync.orders||[]).find(function(x){ return x.id===orderId; });
+          var lines = o2 && (o2.lines||[]);
+          if (lines && lines.length && lines.every(function(l){ return l.kitchen_status==='READY'; }))
+            api('PATCH','/orders/'+orderId+'/',{status:'READY'}).then(function(){ loadSync().then(function(){ renderKitchen(); }); });
+          else { renderKitchen(); }
+        });
+      });
+    }
+
+    function renderOpsCards(){
+      var f = parseModules((sync&&sync.settings&&sync.settings.modules_json)||'');
+      var el = $('ops-cards'); el.innerHTML = '';
+      WEB_MODULES.forEach(function(m){
+        if (!hubOk(m.slug, f)) return;
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'ops-card v'+m.card_variant;
+        b.innerHTML = '<div class="ops-badge" style="background:linear-gradient(135deg,'+m.ring_color+'85,rgba(201,147,61,0.38))"><div class="ops-badge-inner">'+m.badge_emoji+'</div></div>'+
+          '<div><p style="margin:0;font-weight:600">'+escapeHtml(m.title)+'</p><p style="margin:4px 0 0;font-size:0.82rem;opacity:0.88">'+escapeHtml(m.subtitle)+'</p></div>';
+        b.onclick = function(){ openModule(m.slug, m.title); };
+        el.appendChild(b);
+      });
+    }
+
+    function openModule(slug, title){
+      $('more-hub').classList.add('hidden');
+      $('more-detail').classList.remove('hidden');
+      $('moreTitle').textContent = title;
+      var mc = $('moreContent'); mc.innerHTML = '';
+      if (['tables_floor','reservations','suppliers_po','waste_log','cash_drawer','customer_feedback'].indexOf(slug)>=0){
+        mc.innerHTML = '<p class="hint">This area is reserved for a future release — same as the app. Enable the module under Global settings when you are ready.</p>';
+        return;
+      }
+      if (slug==='settings'){ renderSettings(mc); return; }
+      if (slug==='inventory'){ renderInventory(mc); return; }
+      if (slug==='expenses'){ renderExpenses(mc); return; }
+      if (slug==='staff'){ renderStaff(mc); return; }
+      if (slug==='reports'){ renderReports(mc); return; }
+      if (slug==='orders'){ renderOrders(mc); return; }
+      if (slug==='menu_admin'){ renderMenuAdmin(mc); return; }
+      if (slug==='qr_menu'){ renderQr(mc); return; }
+      mc.innerHTML = '<p class="hint">Open this section in the Android app for the full experience.</p>';
+    }
+    $('moreBack').onclick = function(){ $('more-detail').classList.add('hidden'); $('more-hub').classList.remove('hidden'); };
+
+    function renderSettings(el){
+      var s = (sync&&sync.settings)||{};
+      el.innerHTML = '<label>Venue name</label><input id="set-name" value="'+escapeHtml(s.venue_name||'')+'"/>'+
+        '<label>Tax %</label><input id="set-tax" type="number" step="0.1" value="'+(s.tax_percent!=null?s.tax_percent:5)+'"/>'+
+        '<label>Service charge %</label><input id="set-svc" type="number" step="0.1" value="'+(s.service_charge_percent!=null?s.service_charge_percent:0)+'"/>'+
+        '<button type="button" class="btn btn-primary" id="set-save" style="margin-top:14px">Save</button>';
+      $('set-save').onclick = function(){
+        api('PUT','/settings/venue/',{venue_name:$('set-name').value,tax_percent:parseFloat($('set-tax').value)||0,service_charge_percent:parseFloat($('set-svc').value)||0}).then(function(r){
+          if(r.ok) loadSync().then(function(){ alert('Saved'); });
+          else alert('Save failed');
+        });
+      };
+    }
+    function renderInventory(el){
+      var rows = (sync.inventory||[]).map(function(it){
+        return '<tr><td>'+escapeHtml(it.name)+'</td><td><input data-iid="'+it.id+'" type="number" step="0.01" value="'+it.quantity+'" style="width:5rem"/></td><td>'+escapeHtml(it.unit)+'</td></tr>';
+      }).join('');
+      el.innerHTML = '<table class="data"><thead><tr><th>Item</th><th>Qty</th><th>Unit</th></tr></thead><tbody>'+rows+'</tbody></table><button type="button" class="btn btn-primary" style="margin-top:12px" id="inv-save">Save quantities</button>';
+      $('inv-save').onclick = function(){
+        var p = []; document.querySelectorAll('input[data-iid]').forEach(function(inp){
+          var id=+inp.getAttribute('data-iid'); var it=(sync.inventory||[]).find(function(x){return x.id===id;});
+          if(it) p.push(api('PATCH','/inventory/'+id+'/',{name:it.name,quantity:parseFloat(inp.value)||0,unit:it.unit,low_stock_threshold:it.low_stock_threshold}));
+        });
+        Promise.all(p).then(function(){ loadSync().then(function(){ renderInventory($('moreContent')); dashStats(); }); });
+      };
+    }
+    function renderExpenses(el){
+      var ex = (sync.expenses||[]).slice().sort(function(a,b){ return b.created_at_epoch_millis-a.created_at_epoch_millis; });
+      var rows = ex.map(function(e){
+        return '<tr><td>'+money(e.amount_cents)+'</td><td>'+escapeHtml(e.label)+'</td><td>'+escapeHtml(e.expense_category||'')+'</td></tr>';
+      }).join('');
+      el.innerHTML = '<table class="data"><thead><tr><th>Amount</th><th>Label</th><th>Category</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+        '<p style="margin-top:14px;font-weight:600">Add expense</p>'+
+        '<label>Category</label><input id="ex-cat" placeholder="Food & supplies"/>'+
+        '<label>Label</label><input id="ex-lab"/>'+
+        '<label>Amount ₹</label><input id="ex-amt" type="number" step="0.01"/>'+
+        '<button type="button" class="btn btn-primary" style="margin-top:10px" id="ex-add">Add</button>';
+      $('ex-add').onclick = function(){
+        api('POST','/expenses/',{expense_category:$('ex-cat').value||'General',label:$('ex-lab').value||'Expense',amount_cents:Math.round((parseFloat($('ex-amt').value)||0)*100),created_at_epoch_millis:Date.now()}).then(function(r){
+          if(r.ok) loadSync().then(function(){ renderExpenses($('moreContent')); dashStats(); });
+          else alert('Failed');
+        });
+      };
+    }
+    function renderStaff(el){
+      var rows = (sync.staff||[]).map(function(s){ return '<tr><td>'+escapeHtml(s.name)+'</td><td>'+escapeHtml(s.role||'')+'</td><td>'+money(s.salary_cents)+'/mo</td><td>'+(s.on_shift?'On shift':'')+'</td></tr>'; }).join('');
+      el.innerHTML = '<table class="data"><thead><tr><th>Name</th><th>Role</th><th>Salary</th><th>Shift</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    }
+    function renderReports(el){
+      dashStats();
+      el.innerHTML = $('dash-stats').innerHTML + '<p class="hint" style="margin-top:12px">Figures mirror Dashboard (same rules as the app).</p>';
+    }
+    function renderOrders(el){
+      var rows = (sync.orders||[]).slice().sort(function(a,b){ return b.created_at_epoch_millis-a.created_at_epoch_millis; }).map(function(o){
+        return '<tr><td>#'+o.id+'</td><td>'+o.status+'</td><td>'+money(o.total_cents)+'</td></tr>';
+      }).join('');
+      el.innerHTML = '<table class="data"><thead><tr><th>Order</th><th>Status</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    }
+    function renderMenuAdmin(el){
+      var rows = (sync.menu_items||[]).map(function(m){
+        return '<tr><td>'+escapeHtml(m.name)+'</td><td>'+escapeHtml(m.category)+'</td><td>'+money(m.price_cents)+'</td><td><button type="button" class="btn-text" data-mid="'+m.id+'">'+(m.is_available?'86':'Stock')+'</button></td></tr>';
+      }).join('');
+      el.innerHTML = '<table class="data"><thead><tr><th>Name</th><th>Cat</th><th>Price</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+      el.querySelectorAll('button[data-mid]').forEach(function(b){
+        b.onclick = function(){ var id=+b.getAttribute('data-mid'); var m=(sync.menu_items||[]).find(function(x){return x.id===id;});
+          api('PATCH','/menu-items/'+id+'/',{is_available:!m.is_available}).then(function(){ loadSync().then(function(){ renderMenuAdmin($('moreContent')); }); });
+        };
+      });
+    }
+    function renderQr(el){
+      var tok = (sync.settings&&sync.settings.qr_menu_token)||'';
+      el.innerHTML = '<p class="hint">QR menu token (same as app settings).</p><pre style="word-break:break-all;background:#f5f5f5;padding:10px;border-radius:8px">'+escapeHtml(tok||'(empty — set in Global settings)')+'</pre>';
+    }
+
+    function escapeHtml(s){ var d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
+
+    function showTab(tab){
+      document.querySelectorAll('.page').forEach(function(p){ p.classList.add('hidden'); });
+      $('page-'+tab).classList.remove('hidden');
+      document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.toggle('on', n.getAttribute('data-tab')===tab); });
+      if (tab==='dashboard') dashStats();
+      if (tab==='pos') renderPos();
+      if (tab==='kitchen') renderKitchen();
+      if (tab==='more'){ $('more-detail').classList.add('hidden'); $('more-hub').classList.remove('hidden'); renderOpsCards(); }
+    }
+
+    function wireNav(){
+      document.querySelectorAll('.nav-item').forEach(function(n){
+        n.onclick = function(){ showTab(n.getAttribute('data-tab')); };
+      });
+    }
+
+    function applyModulesNav(){
+      var f = parseModules((sync&&sync.settings&&sync.settings.modules_json)||'');
+      $('nav-kitchen').classList.toggle('hidden', !f.kitchen);
+    }
+
+    function openPay(pkg, qs){
+      var isA = /Android/i.test(navigator.userAgent);
+      if (isA && pkg) window.location.href = 'intent://pay?'+qs+'#Intent;scheme=upi;package='+pkg+';end;';
+      else window.location.href = 'upi://pay?'+qs;
+    }
+    function wireProfile(){
+      $('openProfile').onclick = function(){
+        $('prof-user').textContent = 'Signed in with your API token.';
+        $('prof-venue').textContent = 'Venue: '+((sync&&sync.settings&&sync.settings.venue_name)||'—');
+        var pr = $('plan-rows'); pr.innerHTML = '';
+        BILLING_PLANS.forEach(function(p, i){
+          var b = document.createElement('button'); b.type='button'; b.className='plan-row';
+          b.innerHTML = '<div class="plan-price">'+escapeHtml(p.price_display)+'</div><div><strong>'+escapeHtml(p.headline)+'</strong><p class="hint" style="margin:4px 0 0">'+escapeHtml(p.summary)+'</p><div style="font-size:0.72rem;color:#C2543D;font-weight:600;margin-top:4px">Tap for details & pay</div></div>';
+          b.onclick = function(){
+            var html = ''; (p.bullets||[]).forEach(function(x){ html += '<p style="margin:0 0 8px;font-size:0.88rem">• '+escapeHtml(x)+'</p>'; });
+            html += '<p style="font-weight:600">Pay '+escapeHtml(p.price_display)+'</p><p class="hint">UPI: '+escapeHtml(UPI_VPA)+'</p><div class="pay-grid">'+
+              '<button type="button" class="pay-btn" data-p="phonepe">PhonePe</button><button type="button" class="pay-btn" data-p="gpay">Google Pay</button>'+
+              '<button type="button" class="pay-btn" data-p="paytm">Paytm</button><button type="button" class="pay-btn sec" data-p="">UPI</button></div>';
+            $('planDetailTitle').textContent = p.price_display+' — '+p.headline;
+            $('planDetailBody').innerHTML = html;
+            $('planDetailBody').querySelectorAll('.pay-btn').forEach(function(btn){
+              btn.onclick = function(){ var k=btn.getAttribute('data-p'); openPay(k?UPI_PKG[k]:null, p.upi_qs); };
+            });
+            $('planBackdrop').classList.add('open');
+          };
+          pr.appendChild(b);
+        });
+        $('profileBackdrop').classList.add('open');
+      };
+      $('closeProfile').onclick = function(){ $('profileBackdrop').classList.remove('open'); };
+      $('profileBackdrop').onclick = function(e){ if(e.target=== $('profileBackdrop')) $('profileBackdrop').classList.remove('open'); };
+      $('closePlan').onclick = function(){ $('planBackdrop').classList.remove('open'); };
+      $('planBackdrop').onclick = function(e){ if(e.target=== $('planBackdrop')) $('planBackdrop').classList.remove('open'); };
+    }
+
+    function showApp(){
+      $('screen-login').classList.add('hidden');
+      $('screen-app').classList.remove('hidden');
+      loadSync().then(function(ok){
+        if(!ok){ alert('Could not load venue data'); return; }
+        applyModulesNav();
+        dashStats();
+        renderPos();
+        renderKitchen();
+        renderOpsCards();
+      });
+    }
+
+    $('btnLogin').onclick = function(){
+      $('loginErr').classList.add('hidden');
+      var login_id = $('loginId').value.trim(), password = $('loginPw').value;
+      if (!login_id || !password) { $('loginErr').textContent='Enter login and password'; $('loginErr').classList.remove('hidden'); return; }
+      api('POST','/auth/login/',{login_id:login_id,password:password}).then(function(r){
+        if (!r.ok || !r.data || !r.data.token){ $('loginErr').textContent=(r.data&&r.data.detail)||'Login failed'; $('loginErr').classList.remove('hidden'); return; }
+        token = r.data.token; localStorage.setItem(TOKEN_KEY, token); showApp();
+      });
+    };
+    $('btnSeed').onclick = function(){ api('POST','/sync/seed-defaults/',{}).then(function(r){ if(r.ok) loadSync().then(function(){ dashStats(); renderPos(); alert('Sample data loaded.'); }); else alert('Seed failed (maybe already has data).'); }); };
+    $('btnLogout').onclick = function(){
+      if (token) api('POST','/auth/logout/',{});
+      token=null; localStorage.removeItem(TOKEN_KEY);
+      $('screen-app').classList.add('hidden'); $('screen-login').classList.remove('hidden');
+    };
+    $('btnPlace').onclick = function(){
+      var lines = Object.keys(cart).filter(function(id){ return cart[id]>0; }).map(function(id){ return {menu_item_id:+id, quantity:cart[id]}; });
+      if (!lines.length) return;
+      api('POST','/orders/',{lines:lines,status:'OPEN'}).then(function(r){ if(r.ok){ cart={}; loadSync().then(function(){ renderPos(); dashStats(); renderKitchen(); }); } else alert('Order failed'); });
+    };
+    $('btnClear').onclick = function(){ cart={}; renderPos(); };
+
+    wireNav();
+    wireProfile();
+    if (token) showApp();
+  })();
+  </script>
+</body>
+</html>

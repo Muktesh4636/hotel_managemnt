@@ -46,6 +46,12 @@ object Destinations {
     const val EXPENSES = "expenses"
     const val SETTINGS = "settings"
     const val QR_MENU = "qr_menu"
+    const val TABLES_FLOOR = "tables_floor"
+    const val RESERVATIONS = "reservations"
+    const val SUPPLIERS_PO = "suppliers_po"
+    const val WASTE_LOG = "waste_log"
+    const val CASH_DRAWER = "cash_drawer"
+    const val CUSTOMER_FEEDBACK = "customer_feedback"
 }
 
 private data class BottomTab(
@@ -65,6 +71,12 @@ private val moreRoutes =
         Destinations.EXPENSES,
         Destinations.SETTINGS,
         Destinations.QR_MENU,
+        Destinations.TABLES_FLOOR,
+        Destinations.RESERVATIONS,
+        Destinations.SUPPLIERS_PO,
+        Destinations.WASTE_LOG,
+        Destinations.CASH_DRAWER,
+        Destinations.CUSTOMER_FEEDBACK,
     )
 
 @Composable
@@ -203,6 +215,24 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
             }
             composable(Destinations.QR_MENU) {
                 QrMenuScreen(vm)
+            }
+            composable(Destinations.TABLES_FLOOR) {
+                AdminScreens.TablesFloor(vm)
+            }
+            composable(Destinations.RESERVATIONS) {
+                AdminScreens.Reservations(vm)
+            }
+            composable(Destinations.SUPPLIERS_PO) {
+                AdminScreens.SuppliersPurchaseOrders(vm)
+            }
+            composable(Destinations.WASTE_LOG) {
+                AdminScreens.WasteSpoilageLog(vm)
+            }
+            composable(Destinations.CASH_DRAWER) {
+                AdminScreens.CashDrawerShifts(vm)
+            }
+            composable(Destinations.CUSTOMER_FEEDBACK) {
+                AdminScreens.CustomerFeedback(vm)
             }
         }
     }

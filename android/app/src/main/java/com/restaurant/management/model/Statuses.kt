@@ -20,3 +20,15 @@ object KitchenLineStatus {
     const val COOKING = "COOKING"
     const val READY = "READY"
 }
+
+/** Short English label for UI (stored values stay OPEN, CANCELLED, etc.). */
+fun orderStatusLabel(status: String): String =
+    when (status) {
+        OrderStatus.OPEN -> "Open"
+        OrderStatus.IN_KITCHEN -> "In kitchen"
+        OrderStatus.READY -> "Ready"
+        OrderStatus.SERVED -> "Served"
+        OrderStatus.PAID -> "Paid"
+        OrderStatus.CANCELLED -> "Cancelled"
+        else -> status
+    }

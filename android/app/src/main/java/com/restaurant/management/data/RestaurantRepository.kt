@@ -13,6 +13,7 @@ import com.restaurant.management.data.local.entity.OrderLineEntity
 import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
 import com.restaurant.management.data.local.entity.TableEntity
+import com.restaurant.management.data.remote.BackendGateway
 import com.restaurant.management.model.KitchenLineStatus
 import com.restaurant.management.model.OrderStatus
 import com.restaurant.management.model.TableStatus
@@ -44,6 +45,13 @@ class RestaurantRepository(
     private val staffAbsences = db.staffAbsenceDao()
     private val settings = db.settingsDao()
 
+    private fun remoteGateway(): BackendGateway? = BackendGateway.fromPrefs(appContext, db)
+
+    /** Pulls latest venue snapshot from Django when URL + token are configured. */
+    suspend fun backendSyncNow() {
+        remoteGateway()?.syncPull()
+    }
+
     fun observeTables(): Flow<List<TableEntity>> = tables.observeTables()
 
     fun observeMenu(): Flow<List<MenuItemEntity>> = menu.observeMenu()
@@ -70,6 +78,14 @@ class RestaurantRepository(
     suspend fun getSettingsOnce(): AppSettingsEntity? = settings.getOnce()
 
     suspend fun ensureQrMenuToken() {
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.syncPull()
+            val cur = settings.getOnce() ?: return
+            if (cur.qrMenuToken.isNotBlank()) return
+            remote.updateSettings(cur.copy(qrMenuToken = UUID.randomUUID().toString()))
+            return
+        }
         val cur = settings.getOnce() ?: return
         if (cur.qrMenuToken.isNotBlank()) return
         settings.upsert(cur.copy(qrMenuToken = UUID.randomUUID().toString()))
@@ -102,6 +118,16 @@ class RestaurantRepository(
         cart: Map<Long, Int>,
     ) {
         if (cart.isEmpty()) return
+        val remote = remoteGateway()
+        if (remote != null) {
+            val filtered =
+                cart.filter { (menuItemId, qty) ->
+                    qty > 0 && (menu.getById(menuItemId)?.isAvailable == true)
+                }
+            if (filtered.isEmpty()) return
+            remote.placeOrder(tableId, filtered)
+            return
+        }
         db.withTransaction {
             val created =
                 OrderEntity(
@@ -140,6 +166,16 @@ class RestaurantRepository(
     /** Guest orders from QR menu go straight to the kitchen queue. */
     suspend fun placeCustomerMenuOrder(cart: Map<Long, Int>) {
         if (cart.isEmpty()) return
+        val remote = remoteGateway()
+        if (remote != null) {
+            val filtered =
+                cart.filter { (menuItemId, qty) ->
+                    qty > 0 && (menu.getById(menuItemId)?.isAvailable == true)
+                }
+            if (filtered.isEmpty()) return
+            remote.placeCustomerMenuOrder(filtered)
+            return
+        }
         db.withTransaction {
             val created =
                 OrderEntity(
@@ -174,11 +210,21 @@ class RestaurantRepository(
     suspend fun sendOrderToKitchen(orderId: Long) {
         val order = orders.getOrder(orderId) ?: return
         if (order.status == OrderStatus.CANCELLED || order.status == OrderStatus.PAID) return
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.sendOrderToKitchen(orderId)
+            return
+        }
         orders.updateOrder(order.copy(status = OrderStatus.IN_KITCHEN))
     }
 
     suspend fun advanceKitchenLine(lineId: Long) {
         val line = orders.getLine(lineId) ?: return
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.advanceKitchenLine(lineId)
+            return
+        }
         val next =
             when (line.kitchenStatus) {
                 KitchenLineStatus.QUEUED -> KitchenLineStatus.COOKING
@@ -198,10 +244,22 @@ class RestaurantRepository(
     suspend fun markOrderServed(orderId: Long) {
         val order = orders.getOrder(orderId) ?: return
         if (order.status == OrderStatus.PAID || order.status == OrderStatus.CANCELLED) return
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.markOrderServed(orderId)
+            return
+        }
         orders.updateOrder(order.copy(status = OrderStatus.SERVED))
     }
 
     suspend fun payOrder(orderId: Long) {
+        val remote = remoteGateway()
+        if (remote != null) {
+            val order = orders.getOrder(orderId) ?: return
+            if (order.status == OrderStatus.CANCELLED) return
+            remote.payOrder(orderId)
+            return
+        }
         db.withTransaction {
             val order = orders.getOrder(orderId) ?: return@withTransaction
             if (order.status == OrderStatus.CANCELLED) return@withTransaction
@@ -217,6 +275,13 @@ class RestaurantRepository(
     }
 
     suspend fun cancelOrder(orderId: Long) {
+        val remote = remoteGateway()
+        if (remote != null) {
+            val order = orders.getOrder(orderId) ?: return
+            if (order.status == OrderStatus.PAID) return
+            remote.cancelOrder(orderId)
+            return
+        }
         db.withTransaction {
             val order = orders.getOrder(orderId) ?: return@withTransaction
             if (order.status == OrderStatus.PAID) return@withTransaction
@@ -231,10 +296,102 @@ class RestaurantRepository(
         }
     }
 
+    /**
+     * Removes the order and its lines from the local database (order history, kitchen, POS).
+     * Frees the table if it was still marked occupied for this ticket (same idea as cancel).
+     * There is no backend hard-delete API yet; if the server is connected, a later full sync may restore this order.
+     */
+    suspend fun deleteOrderPermanently(orderId: Long) {
+        db.withTransaction {
+            val order = orders.getOrder(orderId) ?: return@withTransaction
+            val tableId = order.tableId
+            if (tableId != null) {
+                val table = tables.getById(tableId)
+                if (table != null && table.status == TableStatus.OCCUPIED) {
+                    tables.update(table.copy(status = TableStatus.FREE))
+                }
+            }
+            orders.deleteOrderById(orderId)
+        }
+    }
+
+    /** Cancelled tickets cannot be edited. Paid orders can still be corrected in order history (totals recomputed). */
+    suspend fun canEditOrderItems(orderId: Long): Boolean {
+        val order = orders.getOrder(orderId) ?: return false
+        return order.status != OrderStatus.CANCELLED
+    }
+
+    private suspend fun recomputeOrderTotalCents(orderId: Long) {
+        val lines = orders.getLinesForOrder(orderId)
+        val total = lines.sumOf { it.quantity * it.unitPriceCents }
+        val o = orders.getOrder(orderId) ?: return
+        orders.updateOrder(o.copy(totalCents = total))
+    }
+
+    /** Add qty to an existing line for the same menu item, or insert a new line (local DB only). */
+    suspend fun addOrIncrementOrderLine(
+        orderId: Long,
+        menuItemId: Long,
+        addQty: Int,
+    ) {
+        if (addQty <= 0) return
+        val remote = remoteGateway()
+        if (remote != null) return
+        db.withTransaction {
+            val order = orders.getOrder(orderId) ?: return@withTransaction
+            if (order.status == OrderStatus.CANCELLED) return@withTransaction
+            val item = menu.getById(menuItemId) ?: return@withTransaction
+            if (!item.isAvailable) return@withTransaction
+            val existing =
+                orders.getLinesForOrder(orderId).firstOrNull { it.menuItemId == menuItemId }
+            if (existing != null) {
+                orders.updateLine(existing.copy(quantity = existing.quantity + addQty))
+            } else {
+                orders.insertLine(
+                    OrderLineEntity(
+                        orderId = orderId,
+                        menuItemId = menuItemId,
+                        quantity = addQty,
+                        unitPriceCents = item.priceCents,
+                        kitchenStatus = KitchenLineStatus.QUEUED,
+                    ),
+                )
+            }
+            recomputeOrderTotalCents(orderId)
+        }
+    }
+
+    /** Set line quantity; [newQuantity] <= 0 removes the line. */
+    suspend fun setOrderLineQuantity(
+        orderId: Long,
+        lineId: Long,
+        newQuantity: Int,
+    ) {
+        val remote = remoteGateway()
+        if (remote != null) return
+        db.withTransaction {
+            val order = orders.getOrder(orderId) ?: return@withTransaction
+            if (order.status == OrderStatus.CANCELLED) return@withTransaction
+            val line = orders.getLine(lineId) ?: return@withTransaction
+            if (line.orderId != orderId) return@withTransaction
+            if (newQuantity <= 0) {
+                orders.deleteLine(line)
+            } else {
+                orders.updateLine(line.copy(quantity = newQuantity))
+            }
+            recomputeOrderTotalCents(orderId)
+        }
+    }
+
     suspend fun setTableStatus(
         tableId: Long,
         status: String,
     ) {
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.setTableStatus(tableId, status)
+            return
+        }
         val table = tables.getById(tableId) ?: return
         tables.update(table.copy(status = status))
     }
@@ -243,9 +400,13 @@ class RestaurantRepository(
         item: MenuItemEntity,
         available: Boolean,
     ) {
-        if (item.isAvailable != available) {
-            menu.update(item.copy(isAvailable = available))
+        if (item.isAvailable == available) return
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.setMenuItemAvailability(item, available)
+            return
         }
+        menu.update(item.copy(isAvailable = available))
     }
 
     suspend fun addMenuItem(
@@ -255,10 +416,24 @@ class RestaurantRepository(
         photoUri: Uri? = null,
     ) {
         val cents = parseMoneyToPaise(priceInInr) ?: return
+        val trimmedName = name.trim()
+        if (trimmedName.isEmpty()) return
+        val remote = remoteGateway()
+        if (remote != null) {
+            val id = remote.createMenuItem(trimmedName, category, cents)
+            if (photoUri != null) {
+                persistMenuPhoto(photoUri, id)?.let { path ->
+                    remote.patchMenuItemCustomPhoto(id, path)
+                }
+            } else {
+                remote.syncPull()
+            }
+            return
+        }
         val id =
             menu.insert(
                 MenuItemEntity(
-                    name = name.trim(),
+                    name = trimmedName,
                     category = category.trim().ifEmpty { "General" },
                     priceCents = cents,
                     isAvailable = true,
@@ -300,6 +475,19 @@ class RestaurantRepository(
                 else -> item.customPhotoPath
             }
 
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.updateMenuItem(
+                item,
+                trimmedName,
+                category,
+                cents,
+                customPhotoUrl = newCustomPath,
+                clearCustomPhoto = removeCustomPhoto && photoUri == null,
+            )
+            return
+        }
+
         menu.update(
             item.copy(
                 name = trimmedName,
@@ -311,6 +499,16 @@ class RestaurantRepository(
     }
 
     suspend fun deleteMenuItem(item: MenuItemEntity) {
+        val remote = remoteGateway()
+        if (remote != null) {
+            item.customPhotoPath?.let { path ->
+                withContext(Dispatchers.IO) {
+                    runCatching { File(path).delete() }
+                }
+            }
+            remote.deleteMenuItem(item)
+            return
+        }
         item.customPhotoPath?.let { path ->
             withContext(Dispatchers.IO) {
                 runCatching { File(path).delete() }
@@ -332,10 +530,20 @@ class RestaurantRepository(
         }
 
     suspend fun updateInventory(item: InventoryEntity) {
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.updateInventory(item)
+            return
+        }
         inventory.update(item)
     }
 
     suspend fun deleteInventory(item: InventoryEntity) {
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.deleteInventory(item)
+            return
+        }
         inventory.delete(item)
     }
 
@@ -350,6 +558,11 @@ class RestaurantRepository(
         val q = quantity.toDoubleOrNull()?.coerceAtLeast(0.0) ?: return
         val threshold = lowStockThreshold.toDoubleOrNull()?.coerceAtLeast(0.0) ?: return
         val u = unit.trim().ifEmpty { "units" }
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.addInventoryItem(trimmedName, q, u, threshold)
+            return
+        }
         inventory.insert(
             InventoryEntity(
                 name = trimmedName,
@@ -370,28 +583,70 @@ class RestaurantRepository(
         if (cents <= 0) return
         val cat = expenseCategory.trim().ifEmpty { "General" }
         val title = label.trim().ifEmpty { cat }
+        val createdAt = System.currentTimeMillis()
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.addExpense(cat, title, cents, note?.trim()?.takeIf { it.isNotEmpty() }, createdAt)
+            return
+        }
         expenses.insert(
             ExpenseEntity(
                 expenseCategory = cat,
                 label = title,
                 amountCents = cents,
                 note = note?.trim()?.takeIf { it.isNotEmpty() },
-                createdAtEpochMillis = System.currentTimeMillis(),
+                createdAtEpochMillis = createdAt,
             ),
         )
     }
 
     suspend fun deleteExpense(e: ExpenseEntity) {
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.deleteExpense(e.id)
+            return
+        }
         expenses.delete(e)
+    }
+
+    suspend fun updateExpense(
+        existing: ExpenseEntity,
+        expenseCategory: String,
+        label: String,
+        amountInInr: String,
+        note: String?,
+    ) {
+        val cents = parseMoneyToPaise(amountInInr) ?: return
+        if (cents <= 0) return
+        val cat = expenseCategory.trim().ifEmpty { "General" }
+        val title = label.trim().ifEmpty { cat }
+        val trimmedNote = note?.trim()?.takeIf { it.isNotEmpty() }
+        val updated =
+            existing.copy(
+                expenseCategory = cat,
+                label = title,
+                amountCents = cents,
+                note = trimmedNote,
+            )
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.updateExpense(updated)
+            return
+        }
+        expenses.update(updated)
     }
 
     suspend fun setStaffShift(
         member: StaffEntity,
         onShift: Boolean,
     ) {
-        if (member.onShift != onShift) {
-            staff.update(member.copy(onShift = onShift))
+        if (member.onShift == onShift) return
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.setStaffShift(member, onShift)
+            return
         }
+        staff.update(member.copy(onShift = onShift))
     }
 
     suspend fun saveStaffSalary(
@@ -405,6 +660,11 @@ class RestaurantRepository(
             } else {
                 parseMoneyToPaise(salaryInInr) ?: return
             }
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.saveStaffSalary(member.copy(salaryCents = cents))
+            return
+        }
         staff.update(member.copy(salaryCents = cents))
     }
 
@@ -414,6 +674,11 @@ class RestaurantRepository(
     ) {
         val n = name.trim()
         if (n.isEmpty()) return
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.addStaff(n, role)
+            return
+        }
         staff.insert(
             StaffEntity(
                 name = n,
@@ -425,6 +690,11 @@ class RestaurantRepository(
     }
 
     suspend fun deleteStaff(member: StaffEntity) {
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.deleteStaff(member.id)
+            return
+        }
         db.withTransaction {
             staffAbsences.deleteAllForStaff(member.id)
             staff.delete(member)
@@ -440,6 +710,11 @@ class RestaurantRepository(
         val day =
             LocalDate.now(zone).minusDays(daysAgoFromToday.coerceAtLeast(0).toLong())
         val start = day.atStartOfDay(zone).toInstant().toEpochMilli()
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.addStaffAbsence(staffId, start, note?.trim()?.takeIf { it.isNotEmpty() })
+            return
+        }
         if (staffAbsences.countForDay(staffId, start) > 0) return
         staffAbsences.insert(
             StaffAbsenceEntity(
@@ -451,10 +726,20 @@ class RestaurantRepository(
     }
 
     suspend fun deleteStaffAbsence(row: StaffAbsenceEntity) {
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.deleteStaffAbsence(row.id)
+            return
+        }
         staffAbsences.delete(row)
     }
 
     suspend fun updateSettings(entity: AppSettingsEntity) {
+        val remote = remoteGateway()
+        if (remote != null) {
+            remote.updateSettings(entity)
+            return
+        }
         settings.upsert(entity)
     }
 
@@ -592,6 +877,7 @@ class RestaurantRepository(
     )
 
     data class ReportLineDetail(
+        val lineId: Long,
         val menuItemId: Long,
         val itemName: String,
         val category: String,
@@ -627,6 +913,7 @@ class RestaurantRepository(
                 val name = item?.name ?: "Menu item #${line.menuItemId}"
                 val lineTotal = line.quantity * line.unitPriceCents
                 ReportLineDetail(
+                    lineId = line.id,
                     menuItemId = line.menuItemId,
                     itemName = name,
                     category = item?.category ?: "",

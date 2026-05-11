@@ -27,4 +27,7 @@ interface StaffDao {
 
     @Delete
     suspend fun delete(staff: StaffEntity)
+
+    @Query("DELETE FROM staff")
+    suspend fun deleteAll()
 }

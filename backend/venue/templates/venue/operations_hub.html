@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Operations — Restaurant</title>
+  <style>
+    :root {
+      --cream: #FFFBF7;
+      --ink: #2C2420;
+      --primary: #C2543D;
+      --on-primary: #fff;
+      --primary-container: #FFE8E0;
+      --on-primary-container: #5C1F14;
+      --secondary-container: #D4EBE3;
+      --on-secondary-container: #1A3D32;
+      --tertiary-container: #FFF3D6;
+      --on-tertiary-container: #5C4010;
+      --on-surface-variant: #5C534D;
+      --outline-variant: #E0D5CD;
+      --honey: #C9933D;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .ops-header {
+      background: var(--primary);
+      color: var(--on-primary);
+      padding: 12px 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.12);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .ops-header-text h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .ops-header-text p {
+      margin: 4px 0 0;
+      font-size: 0.9rem;
+      opacity: 0.92;
+      font-weight: 400;
+    }
+    .profile-btn {
+      width: 56px;
+      height: 56px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--on-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .profile-btn svg { width: 36px; height: 36px; }
+    .profile-btn:hover { background: rgba(255,255,255,.12); }
+    .ops-scroll {
+      padding: 16px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .ops-intro {
+      font-size: 0.95rem;
+      color: var(--on-surface-variant);
+      margin: 0 0 14px;
+      line-height: 1.45;
+    }
+    .ops-card {
+      border-radius: 12px;
+      margin-bottom: 10px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      border: none;
+      width: 100%;
+      text-align: left;
+      font: inherit;
+      box-shadow: 0 1px 2px rgba(44,36,32,.06);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .ops-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(44,36,32,.1);
+    }
+    .ops-card.v0 { background: var(--primary-container); color: var(--on-primary-container); }
+    .ops-card.v1 { background: var(--secondary-container); color: var(--on-secondary-container); }
+    .ops-card.v2 { background: var(--tertiary-container); color: var(--on-tertiary-container); }
+    .ops-badge {
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+      border-radius: 14px;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ops-badge-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      background: rgba(255,255,255,.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.35rem;
+      line-height: 1;
+    }
+    .ops-card-title { font-weight: 600; font-size: 1rem; margin: 0 0 4px; }
+    .ops-card-sub { font-size: 0.82rem; opacity: 0.88; margin: 0; line-height: 1.35; }
+    .ops-foot {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--on-surface-variant);
+      padding: 24px 16px 32px;
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.4;
+    }
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(44,36,32,.45);
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+    #planBackdrop { z-index: 60; }
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      max-width: 420px;
+      width: 100%;
+      max-height: 85vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,.2);
+    }
+    .modal-wide { max-width: 480px; }
+    .modal-h {
+      padding: 18px 20px 12px;
+      border-bottom: 1px solid var(--outline-variant);
+    }
+    .modal-h h2 { margin: 0; font-size: 1.15rem; }
+    .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+    .modal-actions { padding: 12px 16px; border-top: 1px solid var(--outline-variant); display: flex; justify-content: flex-end; gap: 8px; }
+    .btn-text {
+      border: none;
+      background: transparent;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 10px 14px;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+    .btn-text:hover { background: rgba(194,84,61,.08); }
+    .profile-row { margin-bottom: 14px; }
+    .profile-row label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--on-surface-variant); margin-bottom: 4px; }
+    .profile-row span { font-size: 1rem; font-weight: 500; }
+    .divider { height: 1px; background: var(--outline-variant); margin: 16px 0; }
+    .plans-title { font-size: 0.95rem; font-weight: 700; margin: 0 0 6px; }
+    .plans-hint { font-size: 0.8rem; color: var(--on-surface-variant); margin: 0 0 10px; line-height: 1.35; }
+    .plan-row {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--outline-variant);
+      cursor: pointer;
+      background: none;
+      border-left: none;
+      border-right: none;
+      border-top: none;
+      width: 100%;
+      text-align: left;
+      font: inherit;
+    }
+    .plan-row:last-child { border-bottom: none; }
+    .plan-price { color: var(--primary); font-weight: 700; font-size: 1.05rem; min-width: 4.5rem; }
+    .plan-meta h3 { margin: 0 0 4px; font-size: 0.95rem; font-weight: 600; }
+    .plan-meta p { margin: 0; font-size: 0.82rem; color: var(--on-surface-variant); line-height: 1.35; }
+    .tap-hint { font-size: 0.72rem; color: var(--primary); margin-top: 4px; font-weight: 600; }
+    .bullet { margin: 0 0 8px; padding-left: 0; font-size: 0.88rem; line-height: 1.4; }
+    .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .pay-btn {
+      padding: 10px 8px;
+      border-radius: 10px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+    .pay-btn.secondary { background: var(--ink); }
+    .pay-btn:hover { filter: brightness(1.05); }
+    .upi-line { font-size: 0.8rem; color: var(--on-surface-variant); margin-top: 10px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <header class="ops-header">
+    <div class="ops-header-text">
+      <h1>Operations</h1>
+      <p>Back-office modules — scroll for more</p>
+    </div>
+    <button type="button" class="profile-btn" id="openProfile" aria-label="Profile">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="ops-scroll">
+    <p class="ops-intro">Choose a module. Use the bottom bar in the mobile app to return to service screens. On the web, full editing runs in the app — this page matches the Operations layout.</p>
+    {% for e in entries %}
+    <button type="button" class="ops-card v{{ e.card_variant }} ops-card-module" title="Open in the Restaurant Management app">
+      <div class="ops-badge" style="background: linear-gradient(135deg, {{ e.ring_color }}85, rgba(201,147,61,0.38))">
+        <div class="ops-badge-inner">{{ e.badge_emoji }}</div>
+      </div>
+      <div>
+        <p class="ops-card-title">{{ e.title }}</p>
+        <p class="ops-card-sub">{{ e.subtitle }}</p>
+      </div>
+    </button>
+    {% endfor %}
+  </div>
+
+  <p class="ops-foot">Same module list and colours as the Android app. Connect the app to this server under Global settings → Log in to backend.</p>
+
+  <!-- Profile modal -->
+  <div class="modal-backdrop" id="profileBackdrop" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <div class="modal">
+      <div class="modal-h">
+        <h2 id="profileTitle">Your profile</h2>
+      </div>
+      <div class="modal-body">
+        <p class="profile-row"><label>Name</label><span>—</span></p>
+        <p class="profile-row"><label>Phone</label><span>—</span></p>
+        <p class="profile-row"><label>Restaurant</label><span>—</span></p>
+        <p class="profile-row"><label>Sync</label><span>Sign in on the mobile app to see venue sync status.</span></p>
+        <div class="divider"></div>
+        <p class="plans-title">Subscription plans</p>
+        <p class="plans-hint">Tap a plan for details and to pay with PhonePe, Google Pay, Paytm, or any UPI app.</p>
+        {% for p in plans %}
+        <button type="button" class="plan-row" data-plan-index="{{ forloop.counter0 }}">
+          <div class="plan-price">{{ p.price_display }}</div>
+          <div class="plan-meta">
+            <h3>{{ p.headline }}</h3>
+            <p>{{ p.summary }}</p>
+            <div class="tap-hint">Tap for details &amp; pay</div>
+          </div>
+        </button>
+        {% endfor %}
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-text" id="closeProfile">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plan detail + pay -->
+  <div class="modal-backdrop" id="planBackdrop" role="dialog" aria-modal="true">
+    <div class="modal modal-wide">
+      <div class="modal-h">
+        <h2 id="planDetailTitle">Plan</h2>
+      </div>
+      <div class="modal-body" id="planDetailBody"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-text" id="closePlan">Back</button>
+      </div>
+    </div>
+  </div>
+
+  {{ plans|json_script:"plans-data" }}
+
+  <script>
+    (function () {
+      var UPI_VPA = "{{ upi_vpa|escapejs }}";
+      var UPI_PACKAGES = {
+        phonepe: 'com.phonepe.app',
+        gpay: 'com.google.android.apps.nbu.paisa.user',
+        paytm: 'net.one97.paytm'
+      };
+      function openUpi(pkg, qs) {
+        var isAndroid = /Android/i.test(navigator.userAgent);
+        if (isAndroid && pkg) {
+          window.location.href = 'intent://pay?' + qs + '#Intent;scheme=upi;package=' + pkg + ';end;';
+        } else {
+          window.location.href = 'upi://pay?' + qs;
+        }
+      }
+      var plans = JSON.parse(document.getElementById('plans-data').textContent);
+      var profileBackdrop = document.getElementById('profileBackdrop');
+      var planBackdrop = document.getElementById('planBackdrop');
+      document.querySelectorAll('.ops-card-module').forEach(function (card) {
+        card.onclick = function () {
+          window.alert('This module opens in the Restaurant Management Android app after you sign in. Use Operations from the app for full features.');
+        };
+      });
+      document.getElementById('openProfile').onclick = function () { profileBackdrop.classList.add('open'); };
+      document.getElementById('closeProfile').onclick = function () { profileBackdrop.classList.remove('open'); };
+      profileBackdrop.onclick = function (e) { if (e.target === profileBackdrop) profileBackdrop.classList.remove('open'); };
+      document.getElementById('closePlan').onclick = function () { planBackdrop.classList.remove('open'); };
+      planBackdrop.onclick = function (e) { if (e.target === planBackdrop) planBackdrop.classList.remove('open'); };
+
+      document.querySelectorAll('.plan-row').forEach(function (row) {
+        row.onclick = function () {
+          var i = parseInt(row.getAttribute('data-plan-index'), 10);
+          var p = plans[i];
+          if (!p) return;
+          document.getElementById('planDetailTitle').textContent = p.price_display + ' — ' + p.headline;
+          var html = '';
+          p.bullets.forEach(function (b) { html += '<p class="bullet">• ' + escapeHtml(b) + '</p>'; });
+          html += '<div class="divider"></div>';
+          html += '<p style="font-weight:600;margin:0 0 6px;">Pay ' + escapeHtml(p.price_display) + '</p>';
+          html += '<p class="upi-line">UPI: ' + escapeHtml(UPI_VPA) + '</p>';
+          html += '<p style="font-size:0.8rem;color:#5C534D;margin:8px 0 6px;">Choose an app</p>';
+          html += '<div class="pay-grid">';
+          html += '<button type="button" class="pay-btn" data-pkg="phonepe">PhonePe</button>';
+          html += '<button type="button" class="pay-btn" data-pkg="gpay">Google Pay</button>';
+          html += '<button type="button" class="pay-btn" data-pkg="paytm">Paytm</button>';
+          html += '<button type="button" class="pay-btn secondary" data-pkg="">UPI</button>';
+          html += '</div>';
+          document.getElementById('planDetailBody').innerHTML = html;
+          var qs = p.upi_qs;
+          document.getElementById('planDetailBody').querySelectorAll('.pay-btn').forEach(function (btn) {
+            btn.onclick = function () {
+              var k = btn.getAttribute('data-pkg');
+              openUpi(k ? UPI_PACKAGES[k] : null, qs);
+            };
+          });
+          planBackdrop.classList.add('open');
+        };
+      });
+      function escapeHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+    })();
+  </script>
+</body>
+</html>

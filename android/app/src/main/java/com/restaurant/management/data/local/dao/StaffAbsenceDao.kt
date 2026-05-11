@@ -30,4 +30,7 @@ interface StaffAbsenceDao {
 
     @Query("DELETE FROM staff_absences WHERE staffId = :staffId")
     suspend fun deleteAllForStaff(staffId: Long)
+
+    @Query("DELETE FROM staff_absences")
+    suspend fun deleteAll()
 }

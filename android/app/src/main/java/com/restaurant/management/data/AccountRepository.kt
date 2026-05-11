@@ -15,6 +15,8 @@ class AccountRepository(
     fun getSavedUserId(): Long? =
         prefs.getLong(KEY_USER_ID, -1L).takeIf { it > 0L }
 
+    suspend fun getAccountById(id: Long): AccountEntity? = accountDao.getById(id)
+
     fun saveUserId(userId: Long) {
         prefs.edit().putLong(KEY_USER_ID, userId).apply()
     }
@@ -65,6 +67,19 @@ class AccountRepository(
             LegacyDbMigrator.migrateLegacyVenueDbToUser(appContext, newId)
         }
         return Result.success(newId)
+    }
+
+    /**
+     * If no account exists for this login id, registers it. Used for dev/demo installs only.
+     */
+    suspend fun ensureAccountExistsIfAbsent(
+        loginRaw: String,
+        password: String,
+    ) {
+        val loginId = normalizeLoginId(loginRaw)
+        if (loginId.isBlank() || password.length < 6) return
+        if (accountDao.getByLoginId(loginId) != null) return
+        register(loginRaw, password).getOrElse { return }
     }
 
     suspend fun verifyLogin(

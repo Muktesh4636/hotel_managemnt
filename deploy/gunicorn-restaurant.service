@@ -1,0 +1,20 @@
+[Unit]
+Description=Restaurant Django API (gunicorn)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/restaurant-app/backend
+EnvironmentFile=/srv/restaurant-app/backend/.env
+ExecStart=/srv/restaurant-app/backend/.venv/bin/gunicorn \
+    restaurant_backend.wsgi:application \
+    --bind 127.0.0.1:8002 \
+    --workers 3 \
+    --timeout 120 \
+    --access-logfile - \
+    --error-logfile -
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

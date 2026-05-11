@@ -28,4 +28,7 @@ interface TableDao {
 
     @Update
     suspend fun update(table: TableEntity)
+
+    @Query("DELETE FROM tables")
+    suspend fun deleteAll()
 }

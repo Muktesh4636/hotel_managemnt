@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.items as lazyRowItems
 import androidx.compose.material3.Button
@@ -30,9 +32,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,12 +45,14 @@ import androidx.compose.ui.unit.dp
 import com.restaurant.management.R
 import com.restaurant.management.data.local.entity.MenuItemEntity
 import com.restaurant.management.model.OrderStatus
+import com.restaurant.management.model.orderStatusLabel
 import com.restaurant.management.ui.RestaurantViewModel
 import com.restaurant.management.ui.theme.HeaderAccent
 import com.restaurant.management.ui.theme.ScreenHeader
 import com.restaurant.management.ui.visual.KitchenLineBadge
 import com.restaurant.management.ui.visual.MenuItemImageBadge
 import com.restaurant.management.ui.util.formatCents
+import kotlinx.coroutines.launch
 
 object CoreScreens {
     @Composable
@@ -167,12 +170,31 @@ object CoreScreens {
         val menu by vm.menu.collectAsState()
         val cart by vm.cart.collectAsState()
         val openOrders by vm.openOrders.collectAsState()
-        var selectedCategory by remember { mutableStateOf<String?>(null) }
 
         val categoryOrder =
             remember(menu) {
                 menu.map { it.category }.distinct()
             }
+
+        val navCategories =
+            remember(categoryOrder) {
+                buildList {
+                    add(null)
+                    addAll(categoryOrder)
+                }
+            }
+
+        val pagerState =
+            rememberPagerState(
+                pageCount = { navCategories.size.coerceAtLeast(1) },
+            )
+        val scope = rememberCoroutineScope()
+
+        LaunchedEffect(navCategories.size) {
+            if (navCategories.isNotEmpty() && pagerState.currentPage >= navCategories.size) {
+                pagerState.scrollToPage((navCategories.size - 1).coerceAtLeast(0))
+            }
+        }
 
         val cartTotal =
             remember(cart, menu) {
@@ -210,7 +232,7 @@ object CoreScreens {
                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                 )
                 Text(
-                    "Tap a category to show only those items, or All.",
+                    "Tap a chip or drag the menu sideways — pages track your finger and ease into place. Vertical scroll still moves the list.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 8.dp),
@@ -224,53 +246,75 @@ object CoreScreens {
                 ) {
                     item {
                         FilterChip(
-                            selected = selectedCategory == null,
-                            onClick = { selectedCategory = null },
+                            selected = pagerState.currentPage == 0,
+                            onClick = {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(0)
+                                }
+                            },
                             label = { Text("All") },
                         )
                     }
                     lazyRowItems(categoryOrder, key = { it }) { cat ->
+                        val pageIndex = navCategories.indexOf(cat)
                         FilterChip(
-                            selected = selectedCategory == cat,
+                            selected = pageIndex >= 0 && pagerState.currentPage == pageIndex,
                             onClick = {
-                                selectedCategory =
-                                    if (selectedCategory == cat) null else cat
+                                scope.launch {
+                                    if (pageIndex >= 0) {
+                                        if (pagerState.currentPage == pageIndex) {
+                                            pagerState.animateScrollToPage(0)
+                                        } else {
+                                            pagerState.animateScrollToPage(pageIndex)
+                                        }
+                                    }
+                                }
                             },
                             label = { Text(cat) },
                         )
                     }
                 }
-                val menuSections =
-                    remember(menu, selectedCategory) {
-                        val sel = selectedCategory
-                        if (sel == null) {
-                            menu
-                                .groupBy { it.category }
-                                .mapNotNull { (cat, dishes) ->
-                                    if (dishes.isEmpty()) null else cat to dishes
+                HorizontalPager(
+                    state = pagerState,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    beyondViewportPageCount = 1,
+                ) { page ->
+                    val pageCategory = navCategories.getOrNull(page)
+                    val menuSections =
+                        remember(menu, pageCategory) {
+                            val sel = pageCategory
+                            if (sel == null) {
+                                menu
+                                    .groupBy { it.category }
+                                    .mapNotNull { (cat, dishes) ->
+                                        if (dishes.isEmpty()) null else cat to dishes
+                                    }
+                            } else {
+                                val dishes = menu.filter { it.category == sel }
+                                if (dishes.isEmpty()) emptyList() else listOf(sel to dishes)
+                            }
+                        }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        menuSections.forEach { (categoryTitle, dishes) ->
+                            item(key = "hdr_${page}_$categoryTitle") {
+                                Text(
+                                    text = categoryTitle,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                            }
+                            lazyItems(dishes, key = { "${page}_${it.id}" }) { item ->
+                                MenuRow(item, cart[item.id] ?: 0) { delta ->
+                                    vm.addToCart(item.id, delta)
                                 }
-                        } else {
-                            val dishes = menu.filter { it.category == sel }
-                            if (dishes.isEmpty()) emptyList() else listOf(sel to dishes)
-                        }
-                    }
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    menuSections.forEach { (categoryTitle, dishes) ->
-                        item(key = "hdr_$categoryTitle") {
-                            Text(
-                                text = categoryTitle,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
-                        }
-                        lazyItems(dishes, key = { it.id }) { item ->
-                            MenuRow(item, cart[item.id] ?: 0) { delta ->
-                                vm.addToCart(item.id, delta)
                             }
                         }
                     }
@@ -371,7 +415,7 @@ object CoreScreens {
         val context = LocalContext.current
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(12.dp)) {
-                Text("Order ID: $orderId · ${labelOrderStatus(status)} · ${formatCents(totalCents)}")
+                Text("Order ID: $orderId · ${orderStatusLabel(status)} · ${formatCents(totalCents)}")
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
                     if (status == OrderStatus.OPEN) {
                         Button(onClick = { vm.printOrderBill(context, orderId) }) {
@@ -390,24 +434,13 @@ object CoreScreens {
                     }
                     if (status != OrderStatus.PAID) {
                         OutlinedButton(onClick = { vm.cancel(orderId) }) {
-                            Text("Void")
+                            Text("Cancel")
                         }
                     }
                 }
             }
         }
     }
-
-    private fun labelOrderStatus(s: String): String =
-        when (s) {
-            OrderStatus.OPEN -> "Open"
-            OrderStatus.IN_KITCHEN -> "In kitchen"
-            OrderStatus.READY -> "Ready"
-            OrderStatus.SERVED -> "Served"
-            OrderStatus.PAID -> "Paid"
-            OrderStatus.CANCELLED -> "Void"
-            else -> s
-        }
 
     @Composable
     fun Kitchen(vm: RestaurantViewModel) {
@@ -446,7 +479,7 @@ object CoreScreens {
                     ) {
                         Column(Modifier.padding(12.dp)) {
                             Text(
-                                "Order ID: ${ow.order.id} · ${labelOrderStatus(ow.order.status)}",
+                                "Order ID: ${ow.order.id} · ${orderStatusLabel(ow.order.status)}",
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                             )

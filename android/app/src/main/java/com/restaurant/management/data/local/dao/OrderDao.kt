@@ -1,6 +1,7 @@
 package com.restaurant.management.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
@@ -23,6 +24,9 @@ interface OrderDao {
 
     @Update
     suspend fun updateLine(line: OrderLineEntity)
+
+    @Delete
+    suspend fun deleteLine(line: OrderLineEntity)
 
     @Query("SELECT * FROM orders WHERE id = :id")
     suspend fun getOrder(id: Long): OrderEntity?
@@ -99,4 +103,14 @@ interface OrderDao {
         "SELECT COUNT(*) FROM orders WHERE status NOT IN ('PAID', 'CANCELLED')",
     )
     fun observeActiveOrderCount(): Flow<Int>
+
+    @Query("DELETE FROM order_lines")
+    suspend fun deleteAllLines()
+
+    @Query("DELETE FROM orders")
+    suspend fun deleteAllOrders()
+
+    /** Line rows cascade (FK); frees any occupied table first in the repository. */
+    @Query("DELETE FROM orders WHERE id = :orderId")
+    suspend fun deleteOrderById(orderId: Long)
 }

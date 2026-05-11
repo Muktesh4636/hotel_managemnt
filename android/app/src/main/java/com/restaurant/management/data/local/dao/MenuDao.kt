@@ -27,4 +27,7 @@ interface MenuDao {
 
     @Delete
     suspend fun delete(item: MenuItemEntity)
+
+    @Query("DELETE FROM menu_items")
+    suspend fun deleteAll()
 }
