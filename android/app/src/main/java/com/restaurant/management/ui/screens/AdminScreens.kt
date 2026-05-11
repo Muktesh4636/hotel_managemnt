@@ -33,6 +33,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -44,6 +48,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
@@ -109,8 +114,10 @@ import com.restaurant.management.ui.util.subscriptionBillingUpiVpa
 import com.restaurant.management.ui.util.SubscriptionUpiPackages
 import com.restaurant.management.ui.util.resolvedMenuCategories
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
@@ -2022,10 +2029,27 @@ object AdminScreens {
         return sdf.format(Date(dayStartEpochMillis))
     }
 
+    private fun millisToLocalDateIso(
+        millis: Long,
+        zone: ZoneId,
+    ): String =
+        Instant.ofEpochMilli(millis).atZone(zone).toLocalDate().toString()
+
+    private fun localDateIsoToPickerMillis(
+        iso: String,
+        zone: ZoneId,
+    ): Long =
+        runCatching {
+            LocalDate.parse(iso.trim()).atStartOfDay(zone).toInstant().toEpochMilli()
+        }.getOrElse {
+            LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli()
+        }
+
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun ReportPeriodControls(
         vm: RestaurantViewModel,
-        zone: java.time.ZoneId,
+        zone: ZoneId,
         selectedYm: YearMonth,
         onSelectedYm: (YearMonth) -> Unit,
         useCustomRange: Boolean,
@@ -2040,6 +2064,7 @@ object AdminScreens {
         onShowMonthPicker: (Boolean) -> Unit,
         monthChoices: List<YearMonth>,
     ) {
+        var datePickerTarget by remember { mutableStateOf<Int?>(null) }
         Row(
             Modifier
                 .fillMaxWidth()
@@ -2049,6 +2074,7 @@ object AdminScreens {
             FilterChip(
                 selected = !useCustomRange,
                 onClick = {
+                    datePickerTarget = null
                     onUseCustomRange(false)
                     onSelectedYm(YearMonth.now(zone))
                 },
@@ -2112,7 +2138,7 @@ object AdminScreens {
             }
         } else {
             Text(
-                "Custom date range (YYYY-MM-DD)",
+                "Custom range — tap the calendar on each field or type YYYY-MM-DD.",
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
@@ -2130,6 +2156,14 @@ object AdminScreens {
                     isError = customError != null,
                     modifier = Modifier.weight(1f),
                     singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = { datePickerTarget = 1 }) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = "Pick start date",
+                            )
+                        }
+                    },
                 )
                 OutlinedTextField(
                     value = customTo,
@@ -2141,6 +2175,14 @@ object AdminScreens {
                     isError = customError != null,
                     modifier = Modifier.weight(1f),
                     singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = { datePickerTarget = 2 }) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = "Pick end date",
+                            )
+                        }
+                    },
                 )
             }
             customError?.let {
@@ -2169,6 +2211,45 @@ object AdminScreens {
                 modifier = Modifier.padding(top = 8.dp),
             ) {
                 Text("Apply range")
+            }
+        }
+        if (datePickerTarget != null) {
+            val which = datePickerTarget!!
+            key(which) {
+                val initialMillis =
+                    when (which) {
+                        1 -> localDateIsoToPickerMillis(customFrom, zone)
+                        else -> localDateIsoToPickerMillis(customTo, zone)
+                    }
+                val state = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+                DatePickerDialog(
+                    onDismissRequest = { datePickerTarget = null },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                val ms = state.selectedDateMillis
+                                if (ms != null) {
+                                    val s = millisToLocalDateIso(ms, zone)
+                                    when (which) {
+                                        1 -> onCustomFrom(s)
+                                        2 -> onCustomTo(s)
+                                    }
+                                    onCustomError(null)
+                                }
+                                datePickerTarget = null
+                            },
+                        ) {
+                            Text("OK")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { datePickerTarget = null }) {
+                            Text("Cancel")
+                        }
+                    },
+                ) {
+                    DatePicker(state = state)
+                }
             }
         }
     }
@@ -2422,7 +2503,7 @@ object AdminScreens {
                     text =
                         if (useCustomRange) {
                             if (customFrom.isBlank() || customTo.isBlank()) {
-                                "Custom range: enter YYYY-MM-DD and tap Apply."
+                                "Custom range: tap the calendar icons or type dates, then Apply."
                             } else {
                                 "Custom range: $customFrom through $customTo"
                             }

@@ -32,7 +32,9 @@ import com.restaurant.management.R
 import com.restaurant.management.ui.RestaurantViewModel
 import com.restaurant.management.ui.theme.HeaderAccent
 import com.restaurant.management.ui.theme.ScreenHeader
+import com.restaurant.management.data.remote.ApiPrefs
 import com.restaurant.management.ui.util.customerMenuDeepLink
+import com.restaurant.management.ui.util.customerMenuWebUrl
 import com.restaurant.management.ui.util.encodeQrBitmap
 import com.restaurant.management.ui.util.saveQrBitmapToPictures
 
@@ -42,14 +44,19 @@ fun QrMenuScreen(vm: RestaurantViewModel) {
     val token = settings?.qrMenuToken.orEmpty()
     val venue = settings?.venueName ?: "Restaurant"
     val context = LocalContext.current
+    val prefs = remember { ApiPrefs(context) }
 
-    val link =
+    val webLink =
+        remember(token, prefs.baseUrl) {
+            if (token.isNotBlank()) customerMenuWebUrl(prefs.baseUrl, token) else ""
+        }
+    val appLink =
         remember(token) {
             if (token.isNotBlank()) customerMenuDeepLink(token) else ""
         }
-    val bitmap =
-        remember(link) {
-            if (link.isNotBlank()) encodeQrBitmap(link) else null
+    val webBitmap =
+        remember(webLink) {
+            if (webLink.isNotBlank()) encodeQrBitmap(webLink) else null
         }
 
     Column(
@@ -60,7 +67,7 @@ fun QrMenuScreen(vm: RestaurantViewModel) {
     ) {
         ScreenHeader(
             title = "Customer QR menu",
-            subtitle = "Guests scan → browse menu → order to kitchen",
+            subtitle = "Web QR for any phone — orders reach Kitchen after sync",
             accent = HeaderAccent.Primary,
             decorationResId = R.drawable.ic_fork_knife,
         )
@@ -72,7 +79,7 @@ fun QrMenuScreen(vm: RestaurantViewModel) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "Each venue has its own QR code (tied to “${venue}”). Print or save the image and place it on tables.",
+                "Each restaurant has its own token. The large QR opens your **website menu** in the guest’s browser (set the same server URL under Global settings → Log in to backend). They tap Place order — the ticket is stored on the server and appears in Kitchen after a short refresh or sync.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -82,6 +89,12 @@ fun QrMenuScreen(vm: RestaurantViewModel) {
                     color = MaterialTheme.colorScheme.secondary,
                 )
             } else {
+            Text(
+                "“${venue}” — print this for tables",
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -90,10 +103,15 @@ fun QrMenuScreen(vm: RestaurantViewModel) {
                     modifier = Modifier.padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    bitmap?.let { bmp ->
+                    Text(
+                        "Guest web menu (recommended)",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                    webBitmap?.let { bmp ->
                         Image(
                             bitmap = bmp.asImageBitmap(),
-                            contentDescription = "QR code linking to guest menu",
+                            contentDescription = "QR code for web guest menu",
                             modifier =
                                 Modifier
                                     .size(280.dp)
@@ -101,13 +119,7 @@ fun QrMenuScreen(vm: RestaurantViewModel) {
                         )
                     }
                     Text(
-                        "Opens this app’s guest menu. Orders reach Kitchen here when guests use this same device & database (shared tablet works). Other phones need the app plus hosted sync later.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                    Text(
-                        link,
+                        webLink,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 8.dp),
@@ -116,31 +128,51 @@ fun QrMenuScreen(vm: RestaurantViewModel) {
             }
             Button(
                 onClick = {
-                    bitmap?.let {
-                        saveQrBitmapToPictures(context, it, venue)
+                    webBitmap?.let {
+                        saveQrBitmapToPictures(context, it, "$venue-web-menu-qr")
                     }
                 },
-                enabled = bitmap != null,
+                enabled = webBitmap != null,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Save QR image to gallery")
+                Text("Save web QR to gallery")
             }
             OutlinedButton(
                 onClick = {
                     val send =
                         android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(android.content.Intent.EXTRA_TEXT, link)
-                            putExtra(android.content.Intent.EXTRA_SUBJECT, "$venue — menu QR link")
+                            putExtra(android.content.Intent.EXTRA_TEXT, webLink)
+                            putExtra(android.content.Intent.EXTRA_SUBJECT, "$venue — guest menu link")
                         }
                     context.startActivity(
-                        android.content.Intent.createChooser(send, "Share menu link"),
+                        android.content.Intent.createChooser(send, "Share guest menu link"),
                     )
                 },
-                enabled = link.isNotBlank(),
+                enabled = webLink.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Share link")
+                Text("Share web guest link")
+            }
+            Card(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+            ) {
+                Column(Modifier.padding(14.dp)) {
+                    Text(
+                        "App-only deep link (guest must have this app installed)",
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    Text(
+                        appLink,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
             }
             }
             Spacer(Modifier.height(24.dp))
@@ -150,9 +182,9 @@ fun QrMenuScreen(vm: RestaurantViewModel) {
                 style = MaterialTheme.typography.titleSmall,
             )
             Text(
-                "1. Guest scans QR with their phone.\n" +
-                    "2. They pick dishes and tap Place order.\n" +
-                    "3. The ticket appears on Kitchen right away.",
+                "1. Guest scans the web QR → browser menu for this venue only.\n" +
+                    "2. They add dishes and tap Place order.\n" +
+                    "3. Kitchen / POS pull from the server (auto-refresh on web; Android Kitchen syncs in the background).",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

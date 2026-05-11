@@ -75,7 +75,7 @@ fun AuthScreens(
             if (modeRegister) {
                 "Use your phone number or a username. Your data stays on this device, separate from other accounts."
             } else {
-                "Same phone or username and password as the web CRM. Verifies with your server when online (needs internet)."
+                "Same phone or username and password as the web CRM. Your venue data stays on this device; it syncs with the server when the network is available."
             },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

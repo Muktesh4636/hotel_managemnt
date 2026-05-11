@@ -516,6 +516,25 @@
       border: 1px solid var(--outline);
       background: var(--surface-2);
       font-size: 0.875rem;
+      min-height: 42px;
+      min-width: 11rem;
+    }
+    .rep-date-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .rep-cal-btn {
+      flex-shrink: 0;
+      padding: 8px 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rep-cal-btn svg {
+      display: block;
     }
     .rep-range-hint { margin: 0 0 12px; font-size: 0.75rem; }
     .rep-range-summary-grid {
@@ -1038,7 +1057,7 @@
         <div id="page-pos" class="page hidden">
           <header class="hdr t2"><div><h1>Point of sale</h1><p>Counter &amp; takeaway orders</p></div></header>
           <div class="pad pad-pos">
-            <p class="hint">Tap an item to select it (highlighted). Use + / − to add to the cart, then place order. Filter with category chips.</p>
+            <p class="hint">Tap an item to add <strong>1</strong> to the cart (tap again to add more). Use <strong>−</strong> / <strong>+</strong> on the tile to adjust quantity, then place order. Filter with category chips.</p>
             <div class="chip-row" id="pos-chips"></div>
             <div id="pos-menu"></div>
             <div id="pos-orders"></div>
@@ -1121,9 +1140,13 @@
     })();
     var sync = null;
     var cart = {};
+    var kitchenPollTimer = null;
     var posCat = null;
     var posSelectedId = null;
     var currentOpsSlug = null;
+    var editingMenuId = null;
+    var editingExpenseId = null;
+    var expenseWebAddCat = null;
     var token = localStorage.getItem(TOKEN_KEY);
     (function(){
       var h = location.hostname;
@@ -1179,6 +1202,32 @@
       var out = [];
       parts.forEach(function(c){ if (!seen[c]) { seen[c]=1; out.push(c); } });
       return out.length ? out : defs.slice();
+    }
+    function resolvedExpenseCategoriesWeb(pipe){
+      var defs = ['Food & supplies','Produce','Utilities','Rent & lease','Water & beverages','Equipment','Other'];
+      var raw = (pipe == null ? '' : String(pipe)).trim();
+      if (!raw) return defs.slice();
+      var parts = raw.split('|').map(function(x){ return x.trim(); }).filter(Boolean);
+      var seen = {};
+      var out = [];
+      parts.forEach(function(c){ if (!seen[c]) { seen[c]=1; out.push(c); } });
+      return out.length ? out : defs.slice();
+    }
+    function startOfLocalDayMillis(daysAgo){
+      var d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - Math.max(0, parseInt(String(daysAgo), 10) || 0));
+      return d.getTime();
+    }
+    function fmtAbsenceDay(ms){
+      var d = new Date(ms);
+      return d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function apiMultipart(method, path, formData){
+      var h = {};
+      if (token) h['Authorization'] = 'Token ' + token;
+      return fetch('/api/v1' + path, { method: method, headers: h, body: formData })
+        .then(function(r){ return r.text().then(function(t){ var j=null; try{j=t?JSON.parse(t):null}catch(e){} return {ok:r.ok,status:r.status,data:j,raw:t}; }); });
     }
     function loadSync(){ return api('GET','/sync/full/').then(function(r){ if(r.ok) sync=r.data; return r.ok; }); }
 
@@ -1521,6 +1570,19 @@
         '<div class="rep-range-metric"><div class="lbl">Paid income (completed sales)</div><div class="val">' + money(st.incomeCents) + '</div></div>' +
         '<p class="rep-range-period">' + escapeHtml(formatRangeLabel(f, toExc)) + '</p>';
     }
+    function tryShowNativeDatePicker(inp){
+      if (!inp) return;
+      if (typeof inp.showPicker === 'function') {
+        try {
+          inp.showPicker();
+          return;
+        } catch (e) { /* fall through */ }
+      }
+      try {
+        inp.focus();
+        inp.click();
+      } catch (e2) {}
+    }
     function wireReportRangeControls(rootEl){
       if (!rootEl) return;
       var b1 = rootEl.querySelector('[data-rep-preset="this-month"]');
@@ -1528,6 +1590,10 @@
       var b3 = rootEl.querySelector('[data-rep-apply]');
       var df = rootEl.querySelector('[data-rep-date-from]');
       var dt = rootEl.querySelector('[data-rep-date-to]');
+      var bf = rootEl.querySelector('[data-rep-open-from]');
+      var bt = rootEl.querySelector('[data-rep-open-to]');
+      if (bf && df) bf.onclick = function(){ tryShowNativeDatePicker(df); };
+      if (bt && dt) bt.onclick = function(){ tryShowNativeDatePicker(dt); };
       if (b1) {
         b1.onclick = function(){
           var r = thisMonthBoundsLocal();
@@ -1545,6 +1611,14 @@
         };
       }
       if (b3) b3.onclick = function(){ updateReportRangeSummary(rootEl); };
+      if (df) {
+        df.addEventListener('change', function(){ updateReportRangeSummary(rootEl); });
+        df.addEventListener('input', function(){ updateReportRangeSummary(rootEl); });
+      }
+      if (dt) {
+        dt.addEventListener('change', function(){ updateReportRangeSummary(rootEl); });
+        dt.addEventListener('input', function(){ updateReportRangeSummary(rootEl); });
+      }
     }
 
     function dashStats(){
@@ -1616,7 +1690,9 @@
           }
           var tile = e.target.closest('.pos-tile');
           if (tile && !e.target.closest('.pos-tile-qty')) {
-            posSelectedId = +tile.getAttribute('data-id');
+            var tid = +tile.getAttribute('data-id');
+            posSelectedId = tid;
+            cart[tid] = (cart[tid] || 0) + 1;
             renderPos();
           }
         });
@@ -1625,7 +1701,9 @@
           var tile = e.target.closest('.pos-tile');
           if (!tile || e.target.closest('.pos-tile-qty')) return;
           e.preventDefault();
-          posSelectedId = +tile.getAttribute('data-id');
+          var tid = +tile.getAttribute('data-id');
+          posSelectedId = tid;
+          cart[tid] = (cart[tid] || 0) + 1;
           renderPos();
         });
       }
@@ -1813,39 +1891,300 @@
       };
     }
     function renderInventory(el){
-      var rows = (sync.inventory||[]).map(function(it){
-        return '<tr><td>'+escapeHtml(it.name)+'</td><td><input data-iid="'+it.id+'" type="number" step="0.01" value="'+it.quantity+'" style="width:5rem"/></td><td>'+escapeHtml(it.unit)+'</td></tr>';
+      if (!sync) return;
+      var inv = sync.inventory || [];
+      var cards = inv.map(function(it){
+        var isLow = (it.quantity != null && it.low_stock_threshold != null && it.quantity <= it.low_stock_threshold);
+        return '<div class="ops-card-block" style="border:1px solid var(--outline-variant);border-radius:var(--r-md);padding:14px;margin-bottom:12px;background:var(--surface);box-shadow:var(--shadow-sm)">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">'+
+          '<div><strong>'+escapeHtml(it.name)+'</strong>'+(isLow?' <span style="color:#b3261e;font-weight:700">LOW</span>':'')+
+          '<p style="margin:6px 0 0;font-size:0.85rem;opacity:0.88">On hand: <strong>'+escapeHtml(String(it.quantity))+'</strong> '+escapeHtml(it.unit||'')+' · reorder when ≤ <strong>'+escapeHtml(String(it.low_stock_threshold))+'</strong></p></div>'+
+          '<button type="button" class="btn btn-outline btn-sm" data-inv-del="'+it.id+'">Delete</button></div>'+
+          '<label style="display:block;margin-top:12px;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.8">Adjust quantity</label>'+
+          '<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center">'+
+          '<input type="number" step="0.01" data-inv-qty="'+it.id+'" value="'+escapeHtml(String(it.quantity))+'" style="flex:1;min-width:6rem;padding:8px;border-radius:8px;border:1px solid var(--outline-variant);font:inherit"/>'+
+          '<span style="font-size:0.85rem">Low alert ≤</span>'+
+          '<input type="number" step="0.01" data-inv-low="'+it.id+'" value="'+escapeHtml(String(it.low_stock_threshold))+'" style="width:6.5rem;padding:8px;border-radius:8px;border:1px solid var(--outline-variant);font:inherit"/>'+
+          '<button type="button" class="btn btn-primary btn-sm" data-inv-save="'+it.id+'">Save</button></div></div>';
       }).join('');
-      el.innerHTML = '<table class="data"><thead><tr><th>Item</th><th>Qty</th><th>Unit</th></tr></thead><tbody>'+rows+'</tbody></table><button type="button" class="btn btn-primary" style="margin-top:12px" id="inv-save">Save quantities</button>';
-      $('inv-save').onclick = function(){
-        var p = []; document.querySelectorAll('input[data-iid]').forEach(function(inp){
-          var id=+inp.getAttribute('data-iid'); var it=(sync.inventory||[]).find(function(x){return x.id===id;});
-          if(it) p.push(api('PATCH','/inventory/'+id+'/',{name:it.name,quantity:parseFloat(inp.value)||0,unit:it.unit,low_stock_threshold:it.low_stock_threshold}));
+      var addBlock =
+        '<div style="margin-bottom:18px;padding:14px;border:1px solid var(--outline-variant);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm)">'+
+        '<p style="margin:0 0 10px;font-weight:700">Add stock item</p>'+
+        '<p class="hint" style="margin:0 0 10px">Same fields as the Android app — name, quantity, unit, and low-stock threshold.</p>'+
+        '<label>Item name</label><input id="inv-new-name" placeholder="e.g. Basmati rice"/>'+
+        '<label>Quantity on hand</label><input id="inv-new-qty" type="number" step="0.01"/>'+
+        '<label>Unit (e.g. kg, L, bottles)</label><input id="inv-new-unit" value="kg"/>'+
+        '<label>Low-stock alert below</label><input id="inv-new-low" type="number" step="0.01" value="0"/>'+
+        '<button type="button" class="btn btn-primary" id="inv-add-btn" style="margin-top:12px">Add stock item</button></div>';
+      el.innerHTML = addBlock + (cards || '<p class="hint">No inventory rows yet.</p>');
+      var ab = $('inv-add-btn');
+      if (ab) ab.onclick = function(){
+        var name = ($('inv-new-name').value||'').trim();
+        var q = parseFloat(String($('inv-new-qty').value||'').replace(',', '.'));
+        var unit = ($('inv-new-unit').value||'kg').trim() || 'kg';
+        var low = parseFloat(String($('inv-new-low').value||'0').replace(',', '.'));
+        if (!name) { alert('Enter item name.'); return; }
+        if (isNaN(q) || isNaN(low)) { alert('Enter valid numbers for quantity and low-stock threshold.'); return; }
+        api('POST','/inventory/', { name: name, quantity: q, unit: unit, low_stock_threshold: low }).then(function(r){
+          if (r.ok) loadSync().then(function(){ renderInventory($('moreContent')); dashStats(); });
+          else alert('Could not add item');
         });
-        Promise.all(p).then(function(){ loadSync().then(function(){ renderInventory($('moreContent')); dashStats(); }); });
       };
+      el.querySelectorAll('[data-inv-save]').forEach(function(btn){
+        btn.onclick = function(){
+          var id = +btn.getAttribute('data-inv-save');
+          var it = inv.find(function(x){ return x.id === id; });
+          if (!it) return;
+          var qtyEl = el.querySelector('[data-inv-qty="'+id+'"]');
+          var lowEl = el.querySelector('[data-inv-low="'+id+'"]');
+          var qty = parseFloat(String(qtyEl && qtyEl.value || '0').replace(',', '.'));
+          var low = parseFloat(String(lowEl && lowEl.value || '0').replace(',', '.'));
+          if (isNaN(q) || isNaN(low)) { alert('Invalid numbers.'); return; }
+          api('PATCH','/inventory/'+id+'/', { name: it.name, quantity: qty, unit: it.unit || 'kg', low_stock_threshold: low }).then(function(r){
+            if (r.ok) loadSync().then(function(){ renderInventory($('moreContent')); dashStats(); });
+            else alert('Save failed');
+          });
+        };
+      });
+      el.querySelectorAll('[data-inv-del]').forEach(function(btn){
+        btn.onclick = function(){
+          var id = +btn.getAttribute('data-inv-del');
+          if (!confirm('Remove this stock item from inventory? This cannot be undone.')) return;
+          api('DELETE','/inventory/'+id+'/').then(function(r){
+            if (r.ok) loadSync().then(function(){ renderInventory($('moreContent')); dashStats(); });
+            else alert('Delete failed');
+          });
+        };
+      });
     }
     function renderExpenses(el){
+      if (!sync) return;
       var ex = (sync.expenses||[]).slice().sort(function(a,b){ return b.created_at_epoch_millis-a.created_at_epoch_millis; });
-      var rows = ex.map(function(e){
-        return '<tr><td>'+money(e.amount_cents)+'</td><td>'+escapeHtml(e.label)+'</td><td>'+escapeHtml(e.expense_category||'')+'</td></tr>';
+      var cats = resolvedExpenseCategoriesWeb((sync.settings && sync.settings.expense_categories) || '');
+      var totalCents = ex.reduce(function(s,e){ return s+(e.amount_cents||0); }, 0);
+      if (expenseWebAddCat == null || cats.indexOf(expenseWebAddCat) < 0) expenseWebAddCat = cats[0] || 'Other';
+      var selCat = expenseWebAddCat;
+      var chipRow = '<div class="chip-row" style="margin-bottom:10px">';
+      cats.forEach(function(c){
+        chipRow += '<button type="button" class="chip'+(c===selCat?' on':'')+'" data-ex-cat="'+escapeAttr(c)+'">'+escapeHtml(c)+'</button>';
+      });
+      chipRow += '</div>';
+      var editBlock = '';
+      if (editingExpenseId != null) {
+        var ee = ex.find(function(x){ return x.id === editingExpenseId; });
+        if (ee) {
+          var ecats = cats.slice();
+          if (ee.expense_category && ecats.indexOf(ee.expense_category) < 0) ecats.push(ee.expense_category);
+          var eSel = ee.expense_category && ecats.indexOf(ee.expense_category) >= 0 ? ee.expense_category : (ecats[0]||'Other');
+          var eChips = '<div class="chip-row" style="margin-bottom:8px">';
+          ecats.forEach(function(c){
+            eChips += '<button type="button" class="chip'+(c===eSel?' on':'')+'" data-ex-edit-cat="'+escapeAttr(c)+'">'+escapeHtml(c)+'</button>';
+          });
+          eChips += '</div><input type="hidden" id="ex-edit-cat" value="'+escapeAttr(eSel)+'"/>';
+          editBlock =
+            '<div style="margin-bottom:16px;padding:14px;border:2px solid var(--primary);border-radius:var(--r-md);background:var(--surface)">'+
+            '<p style="margin:0 0 8px;font-weight:700">Edit expense</p>'+eChips+
+            '<label>Name / description</label><input id="ex-edit-lab" value="'+escapeAttr(ee.label)+'"/>'+
+            '<label>Amount (₹)</label><input id="ex-edit-amt" type="number" step="0.01" value="'+escapeAttr(String((ee.amount_cents||0)/100))+'"/>'+
+            '<label>Note (optional)</label><input id="ex-edit-note" value="'+escapeAttr(ee.note||'')+'"/>'+
+            '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+            '<button type="button" class="btn btn-primary" id="ex-edit-save">Save</button>'+
+            '<button type="button" class="btn btn-outline" id="ex-edit-cancel">Cancel</button></div></div>';
+        } else editingExpenseId = null;
+      }
+      var list = ex.map(function(e){
+        var dt = new Date(e.created_at_epoch_millis||0).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+        var noteLine = e.note ? '<p style="margin:4px 0 0;font-size:0.82rem;opacity:0.85">'+escapeHtml(e.note)+'</p>' : '';
+        return '<div class="ops-card-block" style="border:1px solid var(--outline-variant);border-radius:var(--r-md);padding:14px;margin-bottom:10px;background:var(--surface-2)">'+
+          '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">'+
+          '<div style="flex:1;min-width:0"><div style="font-weight:600">'+escapeHtml((e.expense_category||'') + (e.label ? (' · ' + e.label) : ''))+'</div>'+
+          '<div style="font-size:0.8rem;opacity:0.8;margin-top:4px">'+escapeHtml(dt)+'</div>'+noteLine+'</div>'+
+          '<div style="text-align:right"><div style="font-weight:700">'+money(e.amount_cents)+'</div>'+
+          '<button type="button" class="btn-text" data-ex-edit="'+e.id+'" style="margin-top:6px">Edit</button> '+
+          '<button type="button" class="btn-text" data-ex-del="'+e.id+'" style="margin-top:6px;color:#b3261e">Remove</button></div></div></div>';
       }).join('');
-      el.innerHTML = '<table class="data"><thead><tr><th>Amount</th><th>Label</th><th>Category</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-        '<p style="margin-top:14px;font-weight:600">Add expense</p>'+
-        '<label>Category</label><input id="ex-cat" placeholder="Food & supplies"/>'+
-        '<label>Label</label><input id="ex-lab"/>'+
-        '<label>Amount ₹</label><input id="ex-amt" type="number" step="0.01"/>'+
-        '<button type="button" class="btn btn-primary" style="margin-top:10px" id="ex-add">Add</button>';
-      $('ex-add').onclick = function(){
-        api('POST','/expenses/',{expense_category:$('ex-cat').value||'General',label:$('ex-lab').value||'Expense',amount_cents:Math.round((parseFloat($('ex-amt').value)||0)*100),created_at_epoch_millis:Date.now()}).then(function(r){
-          if(r.ok) loadSync().then(function(){ renderExpenses($('moreContent')); dashStats(); });
-          else alert('Failed');
+      el.innerHTML =
+        '<p class="hint">Pick a category chip, describe the spend, optional note — same flow as the Android app. Long-press is not needed on web: use <strong>Edit</strong>.</p>'+
+        '<div style="padding:14px;border-radius:var(--r-md);background:var(--secondary-container);margin-bottom:14px">'+
+        '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;opacity:0.85">Total recorded</div>'+
+        '<div style="font-size:1.35rem;font-weight:700;margin-top:4px">'+money(totalCents)+'</div></div>'+
+        editBlock+
+        '<p style="margin:0 0 8px;font-weight:700">Add expense</p>'+
+        '<p style="margin:0 0 8px;font-size:0.8rem;opacity:0.85">Expense category</p>'+chipRow+
+        '<label>Description (e.g. tomatoes, vendor)</label><input id="ex-lab" placeholder="What you bought"/>'+
+        '<label>Amount (₹)</label><input id="ex-amt" type="number" step="0.01"/>'+
+        '<label>Note (optional)</label><input id="ex-note" placeholder="Invoice #, etc."/>'+
+        '<button type="button" class="btn btn-primary" style="margin-top:12px" id="ex-add">Add expense</button>'+
+        '<p style="margin:18px 0 8px;font-weight:700">Recent expenses</p>'+(list || '<p class="hint">No expenses yet.</p>');
+      el.querySelectorAll('[data-ex-cat]').forEach(function(b){
+        b.onclick = function(){
+          expenseWebAddCat = b.getAttribute('data-ex-cat') || cats[0] || 'Other';
+          renderExpenses(el);
+        };
+      });
+      var addBtn = $('ex-add');
+      if (addBtn) addBtn.onclick = function(){
+        var cat = expenseWebAddCat || cats[0] || 'Other';
+        var lab = ($('ex-lab').value||'').trim();
+        var ru = parseFloat(String($('ex-amt').value||'').replace(',', '.'));
+        var note = ($('ex-note').value||'').trim();
+        if (!lab) { alert('Enter a description.'); return; }
+        if (isNaN(ru)) { alert('Enter amount in ₹.'); return; }
+        var body = { expense_category: cat, label: lab, amount_cents: Math.round(ru * 100), created_at_epoch_millis: Date.now() };
+        if (note) body.note = note;
+        api('POST','/expenses/', body).then(function(r){
+          if (r.ok) loadSync().then(function(){ renderExpenses($('moreContent')); dashStats(); });
+          else alert('Add failed');
+        });
+      };
+      el.querySelectorAll('[data-ex-del]').forEach(function(b){
+        b.onclick = function(){
+          var id = +b.getAttribute('data-ex-del');
+          if (!confirm('Remove this expense?')) return;
+          api('DELETE','/expenses/'+id+'/').then(function(r){
+            if (r.ok) { if (editingExpenseId === id) editingExpenseId = null; loadSync().then(function(){ renderExpenses($('moreContent')); dashStats(); }); }
+            else alert('Remove failed');
+          });
+        };
+      });
+      el.querySelectorAll('[data-ex-edit]').forEach(function(b){
+        b.onclick = function(){ editingExpenseId = +b.getAttribute('data-ex-edit'); renderExpenses(el); };
+      });
+      el.querySelectorAll('[data-ex-edit-cat]').forEach(function(b){
+        b.onclick = function(){
+          var c = b.getAttribute('data-ex-edit-cat') || '';
+          var inp = $('ex-edit-cat');
+          if (inp) inp.value = c;
+          el.querySelectorAll('[data-ex-edit-cat]').forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-ex-edit-cat') === c); });
+        };
+      });
+      var esc = $('ex-edit-cancel');
+      if (esc) esc.onclick = function(){ editingExpenseId = null; renderExpenses(el); };
+      var esv = $('ex-edit-save');
+      if (esv) esv.onclick = function(){
+        var ee = ex.find(function(x){ return x.id === editingExpenseId; });
+        if (!ee) return;
+        var catInp = $('ex-edit-cat');
+        var cat = (catInp && catInp.value) ? catInp.value : (ee.expense_category||'Other');
+        var lab = ($('ex-edit-lab').value||'').trim();
+        var ru = parseFloat(String($('ex-edit-amt').value||'').replace(',', '.'));
+        var note = ($('ex-edit-note').value||'').trim();
+        if (!lab) { alert('Enter a description.'); return; }
+        if (isNaN(ru)) { alert('Enter amount in ₹.'); return; }
+        var body = { expense_category: cat, label: lab, amount_cents: Math.round(ru * 100), created_at_epoch_millis: ee.created_at_epoch_millis || Date.now(), note: note };
+        api('PATCH','/expenses/'+editingExpenseId+'/', body).then(function(r){
+          if (r.ok) { editingExpenseId = null; loadSync().then(function(){ renderExpenses($('moreContent')); dashStats(); }); }
+          else alert('Save failed');
         });
       };
     }
     function renderStaff(el){
-      var rows = (sync.staff||[]).map(function(s){ return '<tr><td>'+escapeHtml(s.name)+'</td><td>'+escapeHtml(s.role||'')+'</td><td>'+money(s.salary_cents)+'/mo</td><td>'+(s.on_shift?'On shift':'')+'</td></tr>'; }).join('');
-      el.innerHTML = '<table class="data"><thead><tr><th>Name</th><th>Role</th><th>Salary</th><th>Shift</th></tr></thead><tbody>'+rows+'</tbody></table>';
+      if (!sync) return;
+      var staff = sync.staff || [];
+      var absAll = sync.staff_absences || [];
+      var addBlock =
+        '<div style="margin-bottom:18px;padding:14px;border:1px solid var(--outline-variant);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm)">'+
+        '<p style="margin:0 0 10px;font-weight:700">Add staff member</p>'+
+        '<label>Name</label><input id="st-new-name" placeholder="e.g. Priya"/>'+
+        '<label>Role (e.g. Server, Chef)</label><input id="st-new-role" placeholder="Server"/>'+
+        '<button type="button" class="btn btn-primary" id="st-add-btn" style="margin-top:12px">Add staff member</button></div>';
+      var cards = staff.map(function(s){
+        var abs = absAll.filter(function(a){ return a.staff_id === s.id; }).sort(function(a,b){ return (b.day_start_epoch_millis||0)-(a.day_start_epoch_millis||0); });
+        var absHtml = abs.length ? abs.map(function(a){
+          return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.06)">'+
+            '<div><div style="font-weight:600">'+escapeHtml(fmtAbsenceDay(a.day_start_epoch_millis))+'</div>'+
+            (a.note ? '<div style="font-size:0.82rem;opacity:0.85">'+escapeHtml(a.note)+'</div>' : '')+'</div>'+
+            '<button type="button" class="btn-text" data-st-abs-del="'+a.id+'" style="color:#b3261e">Remove</button></div>';
+        }).join('') : '<p class="hint" style="margin:0 0 8px">No absent days recorded yet.</p>';
+        var salInr = (s.salary_cents > 0) ? String(s.salary_cents / 100) : '';
+        var av = escapeHtml((s.name||' ').trim().charAt(0).toUpperCase() || '?');
+        return '<div class="ops-card-block" style="border:1px solid var(--outline-variant);border-radius:var(--r-md);padding:16px;margin-bottom:14px;background:var(--primary-container)">'+
+          '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'+
+          '<div style="width:48px;height:48px;border-radius:999px;background:rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem">'+av+'</div>'+
+          '<div><div style="font-weight:700">'+escapeHtml(s.name)+'</div><div style="font-size:0.85rem;opacity:0.85">'+escapeHtml(s.role||'Staff')+'</div></div></div>'+
+          '<label style="display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer"><input type="checkbox" data-st-shift="'+s.id+'" '+(s.on_shift?'checked':'')+'/> On shift</label>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">'+
+          '<div style="flex:1;min-width:8rem"><label>Monthly salary (₹)</label><input type="number" step="0.01" data-st-sal="'+s.id+'" value="'+escapeAttr(salInr)+'"/></div>'+
+          '<button type="button" class="btn btn-primary btn-sm" data-st-sal-save="'+s.id+'">Save salary</button></div>'+
+          (s.salary_cents > 0 ? '<p style="margin:0 0 10px;font-size:0.82rem;opacity:0.8">Saved: '+money(s.salary_cents)+' / month</p>' : '<p style="margin:0 0 10px;font-size:0.82rem;opacity:0.8">No salary saved yet.</p>')+
+          '<div style="border-top:1px solid rgba(0,0,0,0.12);padding-top:12px;margin-top:4px">'+
+          '<div style="font-weight:700;margin-bottom:6px">Absent days</div>'+
+          '<p class="hint" style="margin:0 0 8px;font-size:0.78rem">0 = today, 1 = yesterday (same as app).</p>'+absHtml+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:flex-end">'+
+          '<div style="width:5.5rem"><label>Days ago</label><input type="number" min="0" step="1" data-st-days="'+s.id+'" value="0"/></div>'+
+          '<div style="flex:1;min-width:8rem"><label>Note (optional)</label><input data-st-note="'+s.id+'" placeholder="Sick leave"/></div></div>'+
+          '<button type="button" class="btn btn-primary btn-sm" style="margin-top:10px" data-st-abs-add="'+s.id+'">Record absent day</button>'+
+          '<button type="button" class="btn btn-outline btn-sm" style="margin-top:12px;width:100%" data-st-del="'+s.id+'">Remove worker</button></div></div>';
+      }).join('');
+      el.innerHTML = '<p class="hint">Salaries feed into reports (monthly ÷ 30 per day). Absences are stored like the Android app.</p>'+addBlock+(cards||'<p class="hint">No staff yet.</p>');
+      var ab = $('st-add-btn');
+      if (ab) ab.onclick = function(){
+        var n = ($('st-new-name').value||'').trim();
+        var r = ($('st-new-role').value||'').trim() || 'Staff';
+        if (!n) { alert('Enter a name.'); return; }
+        api('POST','/staff/', { name: n, role: r, on_shift: false, salary_cents: 0 }).then(function(res){
+          if (res.ok) { $('st-new-name').value=''; $('st-new-role').value=''; loadSync().then(function(){ renderStaff($('moreContent')); dashStats(); }); }
+          else alert('Add failed');
+        });
+      };
+      el.querySelectorAll('[data-st-shift]').forEach(function(cb){
+        cb.onchange = function(){
+          var id = +cb.getAttribute('data-st-shift');
+          api('PATCH','/staff/'+id+'/', { on_shift: !!cb.checked }).then(function(r){
+            if (!r.ok) { alert('Could not update shift'); loadSync().then(function(){ renderStaff($('moreContent')); }); }
+            else loadSync().then(function(){ renderStaff($('moreContent')); });
+          });
+        };
+      });
+      el.querySelectorAll('[data-st-sal-save]').forEach(function(btn){
+        btn.onclick = function(){
+          var id = +btn.getAttribute('data-st-sal-save');
+          var inp = el.querySelector('[data-st-sal="'+id+'"]');
+          var ru = parseFloat(String(inp && inp.value || '0').replace(',', '.'));
+          if (isNaN(ru) || ru < 0) { alert('Enter a valid salary in ₹.'); return; }
+          api('PATCH','/staff/'+id+'/', { salary_cents: Math.round(ru * 100) }).then(function(r){
+            if (r.ok) loadSync().then(function(){ renderStaff($('moreContent')); dashStats(); });
+            else alert('Save failed');
+          });
+        };
+      });
+      el.querySelectorAll('[data-st-abs-add]').forEach(function(btn){
+        btn.onclick = function(){
+          var sid = +btn.getAttribute('data-st-abs-add');
+          var daysEl = el.querySelector('[data-st-days="'+sid+'"]');
+          var noteEl = el.querySelector('[data-st-note="'+sid+'"]');
+          var days = parseInt(String(daysEl && daysEl.value || '0'), 10);
+          if (isNaN(days) || days < 0) days = 0;
+          var note = (noteEl && noteEl.value || '').trim();
+          var start = startOfLocalDayMillis(days);
+          var body = { staff_id: sid, day_start_epoch_millis: start };
+          if (note) body.note = note;
+          api('POST','/staff-absences/', body).then(function(r){
+            if (r.ok) { if (noteEl) noteEl.value=''; loadSync().then(function(){ renderStaff($('moreContent')); }); }
+            else alert(r.data && r.data.detail ? String(r.data.detail) : 'Could not record absence (duplicate day?)');
+          });
+        };
+      });
+      el.querySelectorAll('[data-st-abs-del]').forEach(function(btn){
+        btn.onclick = function(){
+          var aid = +btn.getAttribute('data-st-abs-del');
+          if (!confirm('Remove this absent day?')) return;
+          api('DELETE','/staff-absences/'+aid+'/').then(function(r){
+            if (r.ok) loadSync().then(function(){ renderStaff($('moreContent')); });
+            else alert('Remove failed');
+          });
+        };
+      });
+      el.querySelectorAll('[data-st-del]').forEach(function(btn){
+        btn.onclick = function(){
+          var id = +btn.getAttribute('data-st-del');
+          if (!confirm('Delete this staff member and their absence history?')) return;
+          api('DELETE','/staff/'+id+'/').then(function(r){
+            if (r.ok) loadSync().then(function(){ renderStaff($('moreContent')); dashStats(); });
+            else alert('Delete failed');
+          });
+        };
+      });
     }
     function renderReports(el){
       if (!sync) {
@@ -1861,10 +2200,16 @@
         '<button type="button" class="btn btn-secondary btn-sm" data-rep-preset="this-month">This month</button>'+
         '<button type="button" class="btn btn-secondary btn-sm" data-rep-preset="last30">Last 30 days</button></div>'+
         '<div class="rep-range-row">'+
-        '<label class="rep-date-lbl">From<input type="date" data-rep-date-from class="rep-date-inp" aria-label="From date"/></label>'+
-        '<label class="rep-date-lbl">To<input type="date" data-rep-date-to class="rep-date-inp" aria-label="To date"/></label>'+
+        '<label class="rep-date-lbl">From<span class="rep-date-row">'+
+        '<input type="date" data-rep-date-from class="rep-date-inp" aria-label="From date"/>'+
+        '<button type="button" class="btn btn-secondary btn-sm rep-cal-btn" data-rep-open-from title="Open calendar" aria-label="Open calendar for From date">'+
+        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></button></span></label>'+
+        '<label class="rep-date-lbl">To<span class="rep-date-row">'+
+        '<input type="date" data-rep-date-to class="rep-date-inp" aria-label="To date"/>'+
+        '<button type="button" class="btn btn-secondary btn-sm rep-cal-btn" data-rep-open-to title="Open calendar" aria-label="Open calendar for To date">'+
+        '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></button></span></label>'+
         '<button type="button" class="btn btn-primary btn-sm" data-rep-apply>Apply range</button></div>'+
-        '<p class="hint rep-range-hint">Orders received = every ticket created in the range. Paid income = sum of <strong>PAID</strong> orders only.</p>'+
+        '<p class="hint rep-range-hint">Tap a date field or the calendar button to pick in the browser date picker. Orders received = every ticket created in the range. Paid income = sum of <strong>PAID</strong> orders only.</p>'+
         '<div data-rep-summary class="rep-range-summary-grid"></div></div>'+
         '<p class="dash-metrics-title">Today · headline KPIs</p>'+
         '<div id="rep-stats-grid" class="dash-stats-grid"></div>'+
@@ -1926,28 +2271,53 @@
       el.innerHTML = '<table class="data"><thead><tr><th>Order</th><th>Status</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>';
     }
     function renderMenuAdmin(el){
+      if (!sync) return;
       var items = sync.menu_items||[];
+      var cats = resolvedMenuCategoriesWeb((sync.settings && sync.settings.menu_categories) || '');
+      var editPanel = '';
+      if (editingMenuId != null) {
+        var em = items.find(function(x){ return x.id === editingMenuId; });
+        if (em) {
+          var ru = (em.price != null ? em.price / 100 : 0);
+          var catOpts = cats.map(function(c){
+            return '<option value="'+escapeAttr(c)+'"'+(c===em.category?' selected':'')+'>'+escapeHtml(c)+'</option>';
+          }).join('');
+          editPanel =
+            '<div style="margin-bottom:16px;padding:14px;border:2px solid var(--primary);border-radius:var(--r-md);background:var(--surface)">'+
+            '<p style="margin:0 0 8px;font-weight:700">Edit menu item</p>'+
+            '<label>Name</label><input id="menu-edit-name" value="'+escapeAttr(em.name)+'"/>'+
+            '<label>Category</label><select id="menu-edit-cat" style="width:100%;padding:10px;border-radius:8px;font:inherit;box-sizing:border-box">'+catOpts+'</select>'+
+            '<label>Price (₹)</label><input id="menu-edit-price" type="number" step="0.01" min="0" value="'+escapeAttr(String(ru))+'"/>'+
+            '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+            '<button type="button" class="btn btn-primary" id="menu-edit-save">Save</button>'+
+            '<button type="button" class="btn btn-outline" id="menu-edit-cancel">Cancel</button></div></div>';
+        } else editingMenuId = null;
+      }
       var rows = items.map(function(m){
         var src = menuItemDisplayImageUrl(m);
-        return '<tr><td style="width:56px"><img class="menu-admin-thumb" src="'+escapeHtml(src)+'" alt="" loading="lazy" draggable="false"/></td><td>'+escapeHtml(m.name)+'</td><td>'+escapeHtml(m.category)+'</td><td>'+money(m.price)+'</td><td><button type="button" class="btn-text" data-mid="'+m.id+'">'+(m.is_available?'On menu':'Hidden')+'</button></td></tr>';
+        return '<tr><td style="width:56px"><img class="menu-admin-thumb" src="'+escapeHtml(src)+'" alt="" loading="lazy" draggable="false"/></td><td>'+escapeHtml(m.name)+'</td><td>'+escapeHtml(m.category)+'</td><td>'+money(m.price)+'</td>'+
+          '<td><button type="button" class="btn-text" data-mid-toggle="'+m.id+'">'+(m.is_available?'On menu':'Hidden')+'</button></td>'+
+          '<td style="min-width:12rem"><button type="button" class="btn-text" data-mid-edit="'+m.id+'">Edit</button> '+
+          '<input type="file" accept="image/jpeg,image/png,image/webp" data-mid-photo="'+m.id+'" style="display:none"/>'+
+          '<button type="button" class="btn-text" data-mid-photo-btn="'+m.id+'">Photo</button> '+
+          '<button type="button" class="btn-text" style="color:#b3261e" data-mid-del="'+m.id+'">Delete</button></td></tr>';
       }).join('');
-      var tbody = rows || '<tr><td colspan="5" class="hint" style="padding:12px">No menu rows yet — add below or use “Load sample…” on Home.</td></tr>';
-      var cats = resolvedMenuCategoriesWeb((sync.settings && sync.settings.menu_categories) || '');
+      var tbody = rows || '<tr><td colspan="6" class="hint" style="padding:12px">No menu rows yet — add below or use “Load sample…” on Home.</td></tr>';
       var catSelect = '<label>Category</label><select id="new-menu-cat" style="width:100%;max-width:100%;box-sizing:border-box;padding:10px;border-radius:8px;font:inherit;margin-bottom:10px">';
       cats.forEach(function(c){
         catSelect += '<option value="'+escapeAttr(c)+'">'+escapeHtml(c)+'</option>';
       });
       catSelect += '</select>';
       el.innerHTML =
-        '<p class="hint">Add dishes here (same API as the app). Price is in rupees; it is stored as paise on the server. Photos match the app defaults; upload a custom photo from the Android app to see it here.</p>'+
+        '<p class="hint">Same actions as the Android app: add items, toggle <strong>86 / availability</strong>, <strong>Edit</strong> name/category/price, <strong>Photo</strong> to upload (JPEG/PNG/WebP), or <strong>Delete</strong>. Price is stored as paise on the server.</p>'+editPanel+
         '<div style="margin-bottom:18px;padding:14px;border:1px solid var(--outline-variant);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm)">'+
         '<p style="margin:0 0 10px;font-weight:700">Add menu item</p>'+
         '<label>Name</label><input id="new-menu-name" placeholder="e.g. Masala dosa" />'+
         catSelect+
-        '<p class="hint" style="margin:0 0 8px;font-size:0.8rem">Categories come from Global settings (web) or the app — edit the list there, Save, then reload sync.</p>'+
+        '<p class="hint" style="margin:0 0 8px;font-size:0.8rem">Categories come from Global settings — edit the list there, Save, then reload.</p>'+
         '<label>Price (₹)</label><input id="new-menu-price" type="number" step="0.01" min="0" placeholder="120" />'+
         '<button type="button" class="btn btn-primary" id="btn-add-menu" style="margin-top:12px">Add to menu</button></div>'+
-        '<table class="data"><thead><tr><th></th><th>Name</th><th>Cat</th><th>Price</th><th>Availability</th></tr></thead><tbody>'+tbody+'</tbody></table>';
+        '<table class="data"><thead><tr><th></th><th>Name</th><th>Cat</th><th>Price</th><th>Availability</th><th>Actions</th></tr></thead><tbody>'+tbody+'</tbody></table>';
       var addBtn = $('btn-add-menu');
       if (addBtn) addBtn.onclick = function(){
         var name = ($('new-menu-name').value||'').trim();
@@ -1971,15 +2341,108 @@
           }
         });
       };
-      el.querySelectorAll('button[data-mid]').forEach(function(b){
-        b.onclick = function(){ var id=+b.getAttribute('data-mid'); var m=items.find(function(x){return x.id===id;});
-          api('PATCH','/menu-items/'+id+'/',{is_available:!m.is_available}).then(function(){ loadSync().then(function(){ renderMenuAdmin($('moreContent')); }); });
+      var cancelEd = $('menu-edit-cancel');
+      if (cancelEd) cancelEd.onclick = function(){ editingMenuId = null; renderMenuAdmin(el); };
+      var saveEd = $('menu-edit-save');
+      if (saveEd) saveEd.onclick = function(){
+        var em = items.find(function(x){ return x.id === editingMenuId; });
+        if (!em) return;
+        var nm = ($('menu-edit-name').value||'').trim();
+        var cat = ($('menu-edit-cat') && $('menu-edit-cat').value) ? $('menu-edit-cat').value.trim() : em.category;
+        var ru = parseFloat(String($('menu-edit-price').value||'').replace(',', '.'));
+        if (!nm) { alert('Enter a name.'); return; }
+        if (isNaN(ru) || ru < 0) { alert('Enter a valid price.'); return; }
+        api('PATCH','/menu-items/'+editingMenuId+'/',{
+          name: nm,
+          category: cat,
+          price: Math.round(ru * 100),
+          is_available: !!em.is_available,
+          custom_photo_url: em.custom_photo_url || ''
+        }).then(function(r){
+          if (r.ok) { editingMenuId = null; loadSync().then(function(){ renderMenuAdmin($('moreContent')); }); }
+          else alert('Save failed');
+        });
+      };
+      el.querySelectorAll('button[data-mid-toggle]').forEach(function(b){
+        b.onclick = function(){
+          var id = +b.getAttribute('data-mid-toggle');
+          var m = items.find(function(x){ return x.id === id; });
+          if (!m) return;
+          api('PATCH','/menu-items/'+id+'/',{ is_available: !m.is_available }).then(function(){ loadSync().then(function(){ renderMenuAdmin($('moreContent')); }); });
+        };
+      });
+      el.querySelectorAll('button[data-mid-edit]').forEach(function(b){
+        b.onclick = function(){ editingMenuId = +b.getAttribute('data-mid-edit'); renderMenuAdmin(el); };
+      });
+      el.querySelectorAll('button[data-mid-del]').forEach(function(b){
+        b.onclick = function(){
+          var id = +b.getAttribute('data-mid-del');
+          if (!confirm('Delete this menu item? This cannot be undone.')) return;
+          api('DELETE','/menu-items/'+id+'/').then(function(r){
+            if (r.ok) { if (editingMenuId === id) editingMenuId = null; loadSync().then(function(){ renderMenuAdmin($('moreContent')); }); }
+            else alert('Delete failed');
+          });
+        };
+      });
+      el.querySelectorAll('[data-mid-photo-btn]').forEach(function(btn){
+        btn.onclick = function(){
+          var sid = btn.getAttribute('data-mid-photo-btn');
+          var inp = el.querySelector('input[data-mid-photo="'+sid+'"]');
+          if (inp) inp.click();
+        };
+      });
+      el.querySelectorAll('input[data-mid-photo]').forEach(function(inp){
+        inp.onchange = function(){
+          var id = +inp.getAttribute('data-mid-photo');
+          if (!inp.files || !inp.files[0]) return;
+          var fd = new FormData();
+          fd.append('file', inp.files[0]);
+          apiMultipart('POST', '/menu-items/'+id+'/photo/', fd).then(function(r){
+            inp.value = '';
+            if (r.ok) loadSync().then(function(){ renderMenuAdmin($('moreContent')); });
+            else alert('Photo upload failed');
+          });
         };
       });
     }
     function renderQr(el){
       var tok = (sync.settings&&sync.settings.qr_menu_token)||'';
-      el.innerHTML = '<p class="hint">QR menu token (same as app settings).</p><pre style="word-break:break-all;background:#f5f5f5;padding:10px;border-radius:8px">'+escapeHtml(tok||'(empty — set in Global settings)')+'</pre>';
+      var base = (location.origin || '').replace(/\/$/, '');
+      var webUrl = tok ? (base + '/menu/' + encodeURIComponent(tok) + '/') : '';
+      var qrSrc = webUrl ? ('https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=12&data=' + encodeURIComponent(webUrl)) : '';
+      var qrBlock = webUrl ? (
+        '<div style="text-align:center;margin:16px 0;padding:16px;border:1px solid var(--outline-variant);border-radius:var(--r-md);background:var(--surface)">'+
+        '<p style="margin:0 0 10px;font-weight:700">Guest web menu (print or show on tablet)</p>'+
+        '<img alt="QR code for guest menu" width="280" height="280" style="max-width:100%;height:auto;border-radius:12px;background:#fff" src="'+escapeAttr(qrSrc)+'"/>'+
+        '</div>'
+      ) : '';
+      el.innerHTML =
+        '<p class="hint">Same as the Android <strong>Customer QR menu</strong> screen: guests scan the QR, open the web menu in a browser, and <strong>Place order</strong> sends the ticket to the kitchen.</p>'+qrBlock+
+        (webUrl ? '<p style="margin:10px 0 6px;font-weight:700">Guest link (also encoded in the QR above)</p><pre id="qr-web-url" style="word-break:break-all;background:#f5f5f5;padding:10px;border-radius:8px">'+escapeHtml(webUrl)+'</pre>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+
+        '<button type="button" class="btn btn-secondary btn-sm" id="btn-copy-qr-url">Copy guest link</button>'+
+        '<button type="button" class="btn btn-secondary btn-sm" id="btn-open-qr-url">Open guest menu</button>'+
+        '<button type="button" class="btn btn-secondary btn-sm" id="btn-share-qr-url">Share link</button></div>' : '')+
+        '<p style="margin:18px 0 6px;font-weight:700">Token (Android app deep link)</p><pre style="word-break:break-all;background:#f5f5f5;padding:10px;border-radius:8px">'+escapeHtml(tok||'(empty — open the Android app once while online to generate)')+'</pre>'+
+        '<p class="hint" style="margin-top:12px"><strong>How it works:</strong> guest scans QR → browser menu for this venue → they add dishes and place order → Kitchen / POS pull from the server.</p>';
+      var bc = $('btn-copy-qr-url');
+      if (bc) bc.onclick = function(){
+        var t = $('qr-web-url'); var s = t ? t.textContent : '';
+        if (!s) return;
+        navigator.clipboard.writeText(s).then(function(){ alert('Copied'); }).catch(function(){ alert(s); });
+      };
+      var op = $('btn-open-qr-url');
+      if (op) op.onclick = function(){ if (webUrl) window.open(webUrl, '_blank', 'noopener,noreferrer'); };
+      var sh = $('btn-share-qr-url');
+      if (sh) sh.onclick = function(){
+        if (!webUrl) return;
+        if (navigator.share) {
+          navigator.share({ title: 'Guest menu', text: 'Order from our menu', url: webUrl }).catch(function(){});
+        } else {
+          var t = $('qr-web-url'); var s = t ? t.textContent : webUrl;
+          navigator.clipboard.writeText(s).then(function(){ alert('Copied link'); }).catch(function(){ alert(s); });
+        }
+      };
     }
 
     function escapeHtml(s){ var d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
@@ -2051,6 +2514,19 @@
       }
     }
 
+    function stopKitchenPoll(){
+      if (kitchenPollTimer) { clearInterval(kitchenPollTimer); kitchenPollTimer = null; }
+    }
+    function startKitchenPoll(){
+      stopKitchenPoll();
+      if (!token) return;
+      kitchenPollTimer = setInterval(function(){
+        var pg = $('page-kitchen');
+        if (pg && !pg.classList.contains('hidden')) {
+          loadSync().then(function(ok){ if (ok) renderKitchen(); });
+        }
+      }, 10000);
+    }
     function showTab(tab, opts){
       opts = opts || {};
       if (tab !== 'more') {
@@ -2070,7 +2546,8 @@
       if (tb) tb.textContent = titles[tab] || 'Restaurant CRM';
       if (tab==='dashboard') dashStats();
       if (tab==='pos') renderPos();
-      if (tab==='kitchen') renderKitchen();
+      if (tab==='kitchen') { renderKitchen(); startKitchenPoll(); }
+      else { stopKitchenPoll(); }
       if (tab==='orders' && sync) renderOrders($('orders-body'));
       if (tab==='reports' && sync) { dashStats(); renderReports($('reports-body')); }
       if (tab==='more'){
@@ -2124,7 +2601,7 @@
               var u = URL.createObjectURL(blob);
               var a = document.createElement('a');
               a.href = u;
-              a.download = 'restaurant-crm.apk';
+              a.download = 'pimux.apk';
               document.body.appendChild(a);
               a.click();
               document.body.removeChild(a);
@@ -2226,6 +2703,7 @@
     };
     $('btnSeed').onclick = function(){ api('POST','/sync/seed-defaults/',{}).then(function(r){ if(r.ok) loadSync().then(function(){ dashStats(); renderPos(); alert('Sample data loaded.'); }); else alert('Seed failed (maybe already has data).'); }); };
     function doLogout(){
+      stopKitchenPoll();
       if (token) api('POST','/auth/logout/',{});
       token=null; localStorage.removeItem(TOKEN_KEY);
       currentOpsSlug = null;

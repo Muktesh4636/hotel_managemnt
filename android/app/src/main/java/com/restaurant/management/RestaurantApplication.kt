@@ -3,7 +3,6 @@ package com.restaurant.management
 import android.app.Application
 import com.restaurant.management.data.AccountRepository
 import com.restaurant.management.data.DatabaseSeeder
-import com.restaurant.management.data.NetworkConnectivityMonitor
 import com.restaurant.management.data.RestaurantRepository
 import com.restaurant.management.data.remote.ApiPrefs
 import com.restaurant.management.data.local.AccountsDatabase
@@ -21,9 +20,6 @@ class RestaurantApplication : Application() {
     lateinit var accountsRepo: AccountRepository
         private set
 
-    lateinit var networkMonitor: NetworkConnectivityMonitor
-        private set
-
     private var _restaurantRepository: RestaurantRepository? = null
 
     private val _sessionUserId = MutableStateFlow<Long?>(null)
@@ -33,7 +29,6 @@ class RestaurantApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        networkMonitor = NetworkConnectivityMonitor(this)
         ApiPrefs(this).ensureDefaultBackendUrlPersisted()
         val accDb = AccountsDatabase.getInstance(this)
         accountsRepo = AccountRepository(accDb.accountDao(), this)

@@ -8,7 +8,7 @@ from django.conf import settings
 from django.http import FileResponse, HttpResponse
 
 
-APK_BASENAME = "restaurant-crm.apk"
+APK_BASENAME = "pimux.apk"
 
 
 def download_android_apk(request):
@@ -16,8 +16,8 @@ def download_android_apk(request):
     Sends the CRM Android APK as a download.
     Resolution order:
       1. RESTAURANT_APK_PATH (absolute path on the server)
-      2. Collected static: STATIC_ROOT/venue/downloads/restaurant-crm.apk
-      3. Dev source static: venue/static/venue/downloads/restaurant-crm.apk
+      2. Collected static: STATIC_ROOT/venue/downloads/pimux.apk
+      3. Dev source static: venue/static/venue/downloads/pimux.apk
     """
     roots: list[Path] = []
     env_path = os.environ.get("RESTAURANT_APK_PATH", "").strip()
@@ -47,7 +47,7 @@ def download_android_apk(request):
 
     return HttpResponse(
         "The Android APK is not on this server yet. Build the app (./gradlew assembleRelease "
-        "or assembleDebug), copy the .apk to venue/static/venue/downloads/restaurant-crm.apk "
+        "or assembleDebug), copy the .apk to venue/static/venue/downloads/pimux.apk "
         "and redeploy, or set RESTAURANT_APK_PATH on the server.",
         status=404,
         content_type="text/plain; charset=utf-8",

@@ -14,6 +14,7 @@ import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
 import com.restaurant.management.data.local.entity.TableEntity
 import com.restaurant.management.data.remote.BackendGateway
+import com.restaurant.management.data.remote.DjangoApiClient
 import com.restaurant.management.model.KitchenLineStatus
 import com.restaurant.management.model.OrderStatus
 import com.restaurant.management.model.TableStatus
@@ -47,9 +48,27 @@ class RestaurantRepository(
 
     private fun remoteGateway(): BackendGateway? = BackendGateway.fromPrefs(appContext, db)
 
+    /** True for transport errors (offline, DNS, timeout). HTTP 4xx/5xx are not treated as offline. */
+    private fun isNetworkFailure(e: Throwable): Boolean {
+        var t: Throwable? = e
+        while (t != null) {
+            when (t) {
+                is DjangoApiClient.ApiException -> return false
+                is java.io.IOException -> return true
+                else -> {}
+            }
+            t = t.cause
+        }
+        return false
+    }
+
     /** Pulls latest venue snapshot from Django when URL + token are configured. */
     suspend fun backendSyncNow() {
-        remoteGateway()?.syncPull()
+        try {
+            remoteGateway()?.syncPull()
+        } catch (e: Exception) {
+            if (!isNetworkFailure(e)) throw e
+        }
     }
 
     fun observeTables(): Flow<List<TableEntity>> = tables.observeTables()
@@ -80,11 +99,15 @@ class RestaurantRepository(
     suspend fun ensureQrMenuToken() {
         val remote = remoteGateway()
         if (remote != null) {
-            remote.syncPull()
-            val cur = settings.getOnce() ?: return
-            if (cur.qrMenuToken.isNotBlank()) return
-            remote.updateSettings(cur.copy(qrMenuToken = UUID.randomUUID().toString()))
-            return
+            try {
+                remote.syncPull()
+                val cur = settings.getOnce() ?: return
+                if (cur.qrMenuToken.isNotBlank()) return
+                remote.updateSettings(cur.copy(qrMenuToken = UUID.randomUUID().toString()))
+                return
+            } catch (e: Exception) {
+                if (!isNetworkFailure(e)) throw e
+            }
         }
         val cur = settings.getOnce() ?: return
         if (cur.qrMenuToken.isNotBlank()) return
@@ -118,15 +141,21 @@ class RestaurantRepository(
         cart: Map<Long, Int>,
     ) {
         if (cart.isEmpty()) return
+        val filtered =
+            cart.filter { (menuItemId, qty) ->
+                qty > 0 && (menu.getById(menuItemId)?.isAvailable == true)
+            }
+        if (filtered.isEmpty()) return
         val remote = remoteGateway()
         if (remote != null) {
-            val filtered =
-                cart.filter { (menuItemId, qty) ->
-                    qty > 0 && (menu.getById(menuItemId)?.isAvailable == true)
+            val remoteOk =
+                runCatching {
+                    remote.placeOrder(tableId, filtered)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
                 }
-            if (filtered.isEmpty()) return
-            remote.placeOrder(tableId, filtered)
-            return
+            if (remoteOk) return
         }
         db.withTransaction {
             val created =
@@ -139,7 +168,7 @@ class RestaurantRepository(
                 )
             val orderId = orders.insertOrder(created)
             var total = 0
-            for ((menuItemId, qty) in cart) {
+            for ((menuItemId, qty) in filtered) {
                 if (qty <= 0) continue
                 val item = menu.getById(menuItemId) ?: continue
                 if (!item.isAvailable) continue
@@ -166,15 +195,21 @@ class RestaurantRepository(
     /** Guest orders from QR menu go straight to the kitchen queue. */
     suspend fun placeCustomerMenuOrder(cart: Map<Long, Int>) {
         if (cart.isEmpty()) return
+        val filtered =
+            cart.filter { (menuItemId, qty) ->
+                qty > 0 && (menu.getById(menuItemId)?.isAvailable == true)
+            }
+        if (filtered.isEmpty()) return
         val remote = remoteGateway()
         if (remote != null) {
-            val filtered =
-                cart.filter { (menuItemId, qty) ->
-                    qty > 0 && (menu.getById(menuItemId)?.isAvailable == true)
+            val remoteOk =
+                runCatching {
+                    remote.placeCustomerMenuOrder(filtered)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
                 }
-            if (filtered.isEmpty()) return
-            remote.placeCustomerMenuOrder(filtered)
-            return
+            if (remoteOk) return
         }
         db.withTransaction {
             val created =
@@ -187,7 +222,7 @@ class RestaurantRepository(
                 )
             val orderId = orders.insertOrder(created)
             var total = 0
-            for ((menuItemId, qty) in cart) {
+            for ((menuItemId, qty) in filtered) {
                 if (qty <= 0) continue
                 val item = menu.getById(menuItemId) ?: continue
                 if (!item.isAvailable) continue
@@ -212,8 +247,14 @@ class RestaurantRepository(
         if (order.status == OrderStatus.CANCELLED || order.status == OrderStatus.PAID) return
         val remote = remoteGateway()
         if (remote != null) {
-            remote.sendOrderToKitchen(orderId)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.sendOrderToKitchen(orderId)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         orders.updateOrder(order.copy(status = OrderStatus.IN_KITCHEN))
     }
@@ -222,8 +263,14 @@ class RestaurantRepository(
         val line = orders.getLine(lineId) ?: return
         val remote = remoteGateway()
         if (remote != null) {
-            remote.advanceKitchenLine(lineId)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.advanceKitchenLine(lineId)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         val next =
             when (line.kitchenStatus) {
@@ -246,8 +293,14 @@ class RestaurantRepository(
         if (order.status == OrderStatus.PAID || order.status == OrderStatus.CANCELLED) return
         val remote = remoteGateway()
         if (remote != null) {
-            remote.markOrderServed(orderId)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.markOrderServed(orderId)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         orders.updateOrder(order.copy(status = OrderStatus.SERVED))
     }
@@ -257,8 +310,14 @@ class RestaurantRepository(
         if (remote != null) {
             val order = orders.getOrder(orderId) ?: return
             if (order.status == OrderStatus.CANCELLED) return
-            remote.payOrder(orderId)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.payOrder(orderId)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         db.withTransaction {
             val order = orders.getOrder(orderId) ?: return@withTransaction
@@ -279,8 +338,14 @@ class RestaurantRepository(
         if (remote != null) {
             val order = orders.getOrder(orderId) ?: return
             if (order.status == OrderStatus.PAID) return
-            remote.cancelOrder(orderId)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.cancelOrder(orderId)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         db.withTransaction {
             val order = orders.getOrder(orderId) ?: return@withTransaction
@@ -389,8 +454,14 @@ class RestaurantRepository(
     ) {
         val remote = remoteGateway()
         if (remote != null) {
-            remote.setTableStatus(tableId, status)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.setTableStatus(tableId, status)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         val table = tables.getById(tableId) ?: return
         tables.update(table.copy(status = status))
@@ -403,8 +474,14 @@ class RestaurantRepository(
         if (item.isAvailable == available) return
         val remote = remoteGateway()
         if (remote != null) {
-            remote.setMenuItemAvailability(item, available)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.setMenuItemAvailability(item, available)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         menu.update(item.copy(isAvailable = available))
     }
@@ -420,15 +497,21 @@ class RestaurantRepository(
         if (trimmedName.isEmpty()) return
         val remote = remoteGateway()
         if (remote != null) {
-            val id = remote.createMenuItem(trimmedName, category, cents)
-            if (photoUri != null) {
-                persistMenuPhoto(photoUri, id)?.let { path ->
-                    remote.patchMenuItemCustomPhoto(id, path)
+            val remoteOk =
+                runCatching {
+                    val id = remote.createMenuItem(trimmedName, category, cents)
+                    if (photoUri != null) {
+                        persistMenuPhoto(photoUri, id)?.let { path ->
+                            remote.patchMenuItemCustomPhoto(id, path)
+                        }
+                    } else {
+                        remote.syncPull()
+                    }
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
                 }
-            } else {
-                remote.syncPull()
-            }
-            return
+            if (remoteOk) return
         }
         val id =
             menu.insert(
@@ -477,15 +560,21 @@ class RestaurantRepository(
 
         val remote = remoteGateway()
         if (remote != null) {
-            remote.updateMenuItem(
-                item,
-                trimmedName,
-                category,
-                cents,
-                customPhotoUrl = newCustomPath,
-                clearCustomPhoto = removeCustomPhoto && photoUri == null,
-            )
-            return
+            val remoteOk =
+                runCatching {
+                    remote.updateMenuItem(
+                        item,
+                        trimmedName,
+                        category,
+                        cents,
+                        customPhotoUrl = newCustomPath,
+                        clearCustomPhoto = removeCustomPhoto && photoUri == null,
+                    )
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
 
         menu.update(
@@ -501,13 +590,19 @@ class RestaurantRepository(
     suspend fun deleteMenuItem(item: MenuItemEntity) {
         val remote = remoteGateway()
         if (remote != null) {
-            item.customPhotoPath?.let { path ->
-                withContext(Dispatchers.IO) {
-                    runCatching { File(path).delete() }
+            val remoteOk =
+                runCatching {
+                    item.customPhotoPath?.let { path ->
+                        withContext(Dispatchers.IO) {
+                            runCatching { File(path).delete() }
+                        }
+                    }
+                    remote.deleteMenuItem(item)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
                 }
-            }
-            remote.deleteMenuItem(item)
-            return
+            if (remoteOk) return
         }
         item.customPhotoPath?.let { path ->
             withContext(Dispatchers.IO) {
@@ -532,8 +627,14 @@ class RestaurantRepository(
     suspend fun updateInventory(item: InventoryEntity) {
         val remote = remoteGateway()
         if (remote != null) {
-            remote.updateInventory(item)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.updateInventory(item)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         inventory.update(item)
     }
@@ -541,8 +642,14 @@ class RestaurantRepository(
     suspend fun deleteInventory(item: InventoryEntity) {
         val remote = remoteGateway()
         if (remote != null) {
-            remote.deleteInventory(item)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.deleteInventory(item)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         inventory.delete(item)
     }
@@ -560,8 +667,14 @@ class RestaurantRepository(
         val u = unit.trim().ifEmpty { "units" }
         val remote = remoteGateway()
         if (remote != null) {
-            remote.addInventoryItem(trimmedName, q, u, threshold)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.addInventoryItem(trimmedName, q, u, threshold)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         inventory.insert(
             InventoryEntity(
@@ -586,8 +699,14 @@ class RestaurantRepository(
         val createdAt = System.currentTimeMillis()
         val remote = remoteGateway()
         if (remote != null) {
-            remote.addExpense(cat, title, cents, note?.trim()?.takeIf { it.isNotEmpty() }, createdAt)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.addExpense(cat, title, cents, note?.trim()?.takeIf { it.isNotEmpty() }, createdAt)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         expenses.insert(
             ExpenseEntity(
@@ -603,8 +722,14 @@ class RestaurantRepository(
     suspend fun deleteExpense(e: ExpenseEntity) {
         val remote = remoteGateway()
         if (remote != null) {
-            remote.deleteExpense(e.id)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.deleteExpense(e.id)
+                    true
+                }.getOrElse { ex ->
+                    if (isNetworkFailure(ex)) false else throw ex
+                }
+            if (remoteOk) return
         }
         expenses.delete(e)
     }
@@ -630,8 +755,14 @@ class RestaurantRepository(
             )
         val remote = remoteGateway()
         if (remote != null) {
-            remote.updateExpense(updated)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.updateExpense(updated)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         expenses.update(updated)
     }
@@ -643,8 +774,14 @@ class RestaurantRepository(
         if (member.onShift == onShift) return
         val remote = remoteGateway()
         if (remote != null) {
-            remote.setStaffShift(member, onShift)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.setStaffShift(member, onShift)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         staff.update(member.copy(onShift = onShift))
     }
@@ -662,8 +799,14 @@ class RestaurantRepository(
             }
         val remote = remoteGateway()
         if (remote != null) {
-            remote.saveStaffSalary(member.copy(salaryCents = cents))
-            return
+            val remoteOk =
+                runCatching {
+                    remote.saveStaffSalary(member.copy(salaryCents = cents))
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         staff.update(member.copy(salaryCents = cents))
     }
@@ -676,8 +819,14 @@ class RestaurantRepository(
         if (n.isEmpty()) return
         val remote = remoteGateway()
         if (remote != null) {
-            remote.addStaff(n, role)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.addStaff(n, role)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         staff.insert(
             StaffEntity(
@@ -692,8 +841,14 @@ class RestaurantRepository(
     suspend fun deleteStaff(member: StaffEntity) {
         val remote = remoteGateway()
         if (remote != null) {
-            remote.deleteStaff(member.id)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.deleteStaff(member.id)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         db.withTransaction {
             staffAbsences.deleteAllForStaff(member.id)
@@ -712,8 +867,14 @@ class RestaurantRepository(
         val start = day.atStartOfDay(zone).toInstant().toEpochMilli()
         val remote = remoteGateway()
         if (remote != null) {
-            remote.addStaffAbsence(staffId, start, note?.trim()?.takeIf { it.isNotEmpty() })
-            return
+            val remoteOk =
+                runCatching {
+                    remote.addStaffAbsence(staffId, start, note?.trim()?.takeIf { it.isNotEmpty() })
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         if (staffAbsences.countForDay(staffId, start) > 0) return
         staffAbsences.insert(
@@ -728,8 +889,14 @@ class RestaurantRepository(
     suspend fun deleteStaffAbsence(row: StaffAbsenceEntity) {
         val remote = remoteGateway()
         if (remote != null) {
-            remote.deleteStaffAbsence(row.id)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.deleteStaffAbsence(row.id)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         staffAbsences.delete(row)
     }
@@ -737,8 +904,14 @@ class RestaurantRepository(
     suspend fun updateSettings(entity: AppSettingsEntity) {
         val remote = remoteGateway()
         if (remote != null) {
-            remote.updateSettings(entity)
-            return
+            val remoteOk =
+                runCatching {
+                    remote.updateSettings(entity)
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (remoteOk) return
         }
         settings.upsert(entity)
     }

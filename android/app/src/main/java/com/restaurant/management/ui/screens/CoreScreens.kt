@@ -53,6 +53,7 @@ import com.restaurant.management.ui.theme.ScreenHeader
 import com.restaurant.management.ui.visual.KitchenLineBadge
 import com.restaurant.management.ui.visual.MenuItemImageBadge
 import com.restaurant.management.ui.util.formatCents
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 object CoreScreens {
@@ -473,6 +474,13 @@ object CoreScreens {
         val orders by vm.openOrders.collectAsState()
         val menu by vm.menu.collectAsState()
         val menuMap = remember(menu) { menu.associateBy { it.id } }
+        val kitchenCtx = LocalContext.current.applicationContext
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(12_000)
+                vm.syncPullIfConnected(kitchenCtx)
+            }
+        }
 
         Column(
             modifier =

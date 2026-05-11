@@ -125,11 +125,10 @@ class AccountRepository(
             val baseUrl = prefs.baseUrl.trimEnd('/')
             if (baseUrl.isBlank()) return@withContext verifyLogin(loginRaw, password)
 
-            try {
+            suspend fun applyTokenAndPasswordFromDjango() {
                 val body = DjangoApiClient.login(baseUrl, loginRaw, password)
                 val token = JSONObject(body).getString("token")
                 prefs.token = token
-
                 val existing = accountDao.getByLoginId(loginId)
                 if (existing != null) {
                     val salt = PasswordHasher.newSalt()
@@ -139,6 +138,25 @@ class AccountRepository(
                         PasswordHasher.encodeB64(salt),
                         PasswordHasher.encodeB64(hash),
                     )
+                }
+            }
+
+            // Offline-first: existing on-device accounts sign in without contacting the server.
+            val localId = verifyLogin(loginRaw, password)
+            if (localId != null) {
+                try {
+                    applyTokenAndPasswordFromDjango()
+                } catch (_: Exception) {
+                    // No network or server error — stay signed in locally; token may be stale until online.
+                }
+                return@withContext localId
+            }
+
+            // First-time link: Django account with no local row yet (needs network once).
+            try {
+                applyTokenAndPasswordFromDjango()
+                val existing = accountDao.getByLoginId(loginId)
+                if (existing != null) {
                     return@withContext existing.id
                 }
                 val reg = register(loginRaw, password)
@@ -160,9 +178,9 @@ class AccountRepository(
                     },
                 )
             } catch (_: Exception) {
-                // Offline or wrong server password — try local-only account
+                // Unreachable server — no local account to fall back to
             }
-            verifyLogin(loginRaw, password)
+            null
         }
 
     companion object {

@@ -34,7 +34,7 @@ class AuthViewModel(
         }
         val id = app.accountsRepo.verifyLoginWithBackendThenLocal(loginRaw, password)
         if (id == null) {
-            _message.value = "Wrong phone/username or password (or cannot reach server)."
+            _message.value = "Wrong phone/username or password."
             return@launch
         }
         app.openRestaurantForUser(id)

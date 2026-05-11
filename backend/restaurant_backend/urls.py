@@ -4,11 +4,13 @@ from django.contrib import admin
 from django.urls import include, path
 
 from venue.views_download import download_android_apk
+from venue.views_guest import guest_menu_page
 from venue.views_operations import operations_hub
 from venue.views_web_app import web_app, web_app_manifest
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("menu/<str:qr_token>/", guest_menu_page, name="guest-menu-page"),
     path("manifest.webmanifest", web_app_manifest, name="web-app-manifest"),
     path("", web_app, name="web-app-root"),
     path("app/", web_app, name="web-app"),

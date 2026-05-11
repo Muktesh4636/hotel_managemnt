@@ -62,10 +62,7 @@ class MainActivity : androidx.activity.ComponentActivity() {
                             val observer =
                                 LifecycleEventObserver { _, event ->
                                     if (event == Lifecycle.Event.ON_RESUME) {
-                                        val app = application as RestaurantApplication
-                                        if (app.networkMonitor.online.value) {
-                                            vm.syncPullIfConnected(application)
-                                        }
+                                        vm.syncPullIfConnected(application)
                                     }
                                 }
                             lifecycleOwner.lifecycle.addObserver(observer)

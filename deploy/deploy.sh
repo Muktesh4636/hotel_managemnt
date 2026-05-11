@@ -125,6 +125,15 @@ if [[ -n "${PROVISION_DJANGO_USER:-}" && -n "${PROVISION_DJANGO_PASSWORD:-}" ]];
   run_ssh "cd '${DEPLOY_APP_ROOT}/backend' && . .venv/bin/activate && python manage.py create_signin_user ${_pu} ${_pp}"
 fi
 
+# Optional: staff + superuser for https://…/admin/ (separate from API-only create_signin_user).
+# deploy/.env.deploy: PROVISION_DJANGO_ADMIN_USER and PROVISION_DJANGO_ADMIN_PASSWORD (≥ 6 chars).
+if [[ -n "${PROVISION_DJANGO_ADMIN_USER:-}" && -n "${PROVISION_DJANGO_ADMIN_PASSWORD:-}" ]]; then
+  echo "==> Provisioning Django admin (/admin/): ${PROVISION_DJANGO_ADMIN_USER}"
+  _au=$(printf %q "$PROVISION_DJANGO_ADMIN_USER")
+  _ap=$(printf %q "$PROVISION_DJANGO_ADMIN_PASSWORD")
+  run_ssh "cd '${DEPLOY_APP_ROOT}/backend' && . .venv/bin/activate && python manage.py ensure_django_admin ${_au} ${_ap}"
+fi
+
 echo ""
 echo "==> Deploy finished."
 DOMAIN="${DEPLOY_PUBLIC_DOMAIN:-${DEPLOY_HOST}}"
