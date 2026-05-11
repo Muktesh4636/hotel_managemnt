@@ -61,6 +61,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -75,6 +76,7 @@ import com.restaurant.management.data.local.entity.MenuItemEntity
 import com.restaurant.management.data.local.entity.InventoryEntity
 import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
+import com.restaurant.management.RestaurantApplication
 import com.restaurant.management.data.RestaurantRepository
 import com.restaurant.management.R
 import com.restaurant.management.ui.Destinations
@@ -112,13 +114,13 @@ object AdminScreens {
 
     private val hubEntriesAll =
         listOf(
+            Triple("Order history", "Recent tickets — tap for line items", Destinations.ORDERS),
             Triple("Menu & item availability", "Edit categories, prices, 86 items", Destinations.MENU_ADMIN),
             Triple("Customer QR menu", "QR code — guests order from phone to kitchen", Destinations.QR_MENU),
             Triple("Inventory & stock", "Track ingredients and low-stock alerts", Destinations.INVENTORY),
             Triple("Expenses", "Track operating costs and running total", Destinations.EXPENSES),
             Triple("Staff", "Salaries, absent days & roster", Destinations.STAFF),
             Triple("Reports", "Revenue, expenses, salaries & net profit", Destinations.REPORTS),
-            Triple("Order history", "Recent tickets — tap for line items", Destinations.ORDERS),
             Triple("Global settings", "Menu categories, modules, tax & venue name", Destinations.SETTINGS),
         )
 
@@ -206,6 +208,7 @@ object AdminScreens {
         var price by remember { mutableStateOf("") }
         var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
         var showAddForm by remember { mutableStateOf(false) }
+        var addCategoryExpanded by remember { mutableStateOf(false) }
         /** `null` = show all categories */
         var selectedListCategory by remember { mutableStateOf<String?>(null) }
         var actionMenuItem by remember { mutableStateOf<MenuItemEntity?>(null) }
@@ -245,6 +248,7 @@ object AdminScreens {
             if (category !in menuCats) {
                 category = menuCats.firstOrNull() ?: "General"
             }
+            addCategoryExpanded = false
             if (selectedListCategory != null && selectedListCategory !in menuCats) {
                 selectedListCategory = null
             }
@@ -520,21 +524,41 @@ object AdminScreens {
                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                 )
                 Text(
-                    "Set categories under Global settings. Tap a chip to choose.",
+                    "Add each category on its own line under Global settings, then Save. All saved categories appear in the list below.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 6.dp),
                 )
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    items(menuCats, key = { it }) { cat ->
-                        FilterChip(
-                            selected = category == cat,
-                            onClick = { category = cat },
-                            label = { Text(cat) },
-                        )
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { addCategoryExpanded = true },
+                        readOnly = true,
+                        value = category,
+                        onValueChange = {},
+                        label = { Text("Select category") },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                            )
+                        },
+                    )
+                    DropdownMenu(
+                        expanded = addCategoryExpanded,
+                        onDismissRequest = { addCategoryExpanded = false },
+                    ) {
+                        menuCats.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { Text(cat) },
+                                onClick = {
+                                    category = cat
+                                    addCategoryExpanded = false
+                                },
+                            )
+                        }
                     }
                 }
                 OutlinedTextField(
@@ -2015,6 +2039,7 @@ object AdminScreens {
 
     @Composable
     fun Settings(vm: RestaurantViewModel) {
+        val app = LocalContext.current.applicationContext as RestaurantApplication
         val s by vm.settings.collectAsState()
         var venue by remember(s?.venueName) { mutableStateOf(s?.venueName ?: "") }
         var tax by remember(s?.taxPercent) { mutableStateOf(s?.taxPercent?.toString() ?: "5") }
@@ -2192,6 +2217,21 @@ object AdminScreens {
                 ) {
                     Text("Save settings")
                 }
+                OutlinedButton(
+                    onClick = { app.logout() },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                ) {
+                    Text("Sign out")
+                }
+                Text(
+                    "Sign out to switch account. Each account has its own data on this device.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
                 Text(
                     "Leave menu categories empty to use built-in defaults. Amounts are INR (₹).",
                     style = MaterialTheme.typography.bodySmall,

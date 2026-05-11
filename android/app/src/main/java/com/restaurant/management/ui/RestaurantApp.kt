@@ -121,24 +121,33 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
                                 unselectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                             ),
                         onClick = {
-                            if (tab.route == Destinations.MORE) {
-                                // Always return to the Operations hub when tapping More again
-                                // (clears Customer QR, Reports, Settings, etc. stacked above it).
-                                navController.navigate(Destinations.MORE) {
-                                    popUpTo(Destinations.MORE) { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            } else {
-                                // Route-based popUpTo matches the graph start route ("dashboard") reliably.
-                                // Using findStartDestination().id could leave nested More routes on the stack,
-                                // so Home appeared selected but the screen stayed on Menu / Settings, etc.
-                                navController.navigate(tab.route) {
-                                    popUpTo(Destinations.DASHBOARD) {
-                                        inclusive = false
-                                        saveState = true
+                            when (tab.route) {
+                                Destinations.MORE -> {
+                                    // Always return to the Operations hub when tapping More again
+                                    // (clears Customer QR, Reports, Settings, etc. stacked above it).
+                                    navController.navigate(Destinations.MORE) {
+                                        popUpTo(Destinations.MORE) { inclusive = true }
+                                        launchSingleTop = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
+                                }
+                                Destinations.DASHBOARD -> {
+                                    // Popping to start is reliable from deep Operations routes (Menu, Settings, …).
+                                    // navigate(DASHBOARD) + popUpTo(DASHBOARD) can fail to clear the stack in some cases.
+                                    if (!navController.popBackStack(Destinations.DASHBOARD, inclusive = false)) {
+                                        navController.navigate(Destinations.DASHBOARD) {
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                }
+                                else -> {
+                                    navController.navigate(tab.route) {
+                                        popUpTo(Destinations.DASHBOARD) {
+                                            inclusive = false
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
                             }
                         },

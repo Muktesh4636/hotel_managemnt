@@ -65,6 +65,11 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var instance: AppDatabase? = null
 
+        @Volatile
+        private var instanceUserId: Long = -1L
+
+        fun fileNameForUser(userId: Long): String = "restaurant_user_$userId.db"
+
         private val MIGRATION_1_2 =
             object : Migration(1, 2) {
                 override fun migrate(db: SupportSQLiteDatabase) {
@@ -176,23 +181,42 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
-        fun getInstance(context: Context): AppDatabase {
-            return instance ?: synchronized(this) {
-                instance ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    AppDatabase::class.java,
-                    "restaurant.db",
-                ).addMigrations(
-                    MIGRATION_1_2,
-                    MIGRATION_2_3,
-                    MIGRATION_3_4,
-                    MIGRATION_4_5,
-                    MIGRATION_5_6,
-                    MIGRATION_6_7,
-                    MIGRATION_7_8,
-                )
-                    .build()
-                    .also { instance = it }
+        fun getInstance(
+            context: Context,
+            userId: Long,
+        ): AppDatabase {
+            synchronized(this) {
+                if (instance != null && instanceUserId != userId) {
+                    runCatching { instance?.close() }
+                    instance = null
+                    instanceUserId = -1L
+                }
+                if (instance == null) {
+                    instance =
+                        Room.databaseBuilder(
+                            context.applicationContext,
+                            AppDatabase::class.java,
+                            fileNameForUser(userId),
+                        ).addMigrations(
+                            MIGRATION_1_2,
+                            MIGRATION_2_3,
+                            MIGRATION_3_4,
+                            MIGRATION_4_5,
+                            MIGRATION_5_6,
+                            MIGRATION_6_7,
+                            MIGRATION_7_8,
+                        ).build()
+                    instanceUserId = userId
+                }
+                return instance!!
+            }
+        }
+
+        fun closeInstance() {
+            synchronized(this) {
+                runCatching { instance?.close() }
+                instance = null
+                instanceUserId = -1L
             }
         }
     }
