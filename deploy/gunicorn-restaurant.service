@@ -1,3 +1,4 @@
+# Bind port must be unique on the host (e.g. 8002 is often taken by other gunicorn apps).
 [Unit]
 Description=Restaurant Django API (gunicorn)
 After=network.target
@@ -9,7 +10,7 @@ WorkingDirectory=/srv/restaurant-app/backend
 EnvironmentFile=/srv/restaurant-app/backend/.env
 ExecStart=/srv/restaurant-app/backend/.venv/bin/gunicorn \
     restaurant_backend.wsgi:application \
-    --bind 127.0.0.1:8002 \
+    --bind 127.0.0.1:8020 \
     --workers 3 \
     --timeout 120 \
     --access-logfile - \

@@ -58,11 +58,17 @@ systemctl reset-failed gunicorn-restaurant 2>/dev/null || true
 systemctl start gunicorn-restaurant
 
 if [[ -f "${APP_ROOT}/deploy/nginx-pimux.store.conf" ]]; then
-  cp "${APP_ROOT}/deploy/nginx-pimux.store.conf" /etc/nginx/sites-available/pimux.store
-  ln -sf /etc/nginx/sites-available/pimux.store /etc/nginx/sites-enabled/pimux.store
+  if [[ -f /etc/letsencrypt/live/pimux.store/fullchain.pem && -f "${APP_ROOT}/deploy/nginx-pimux.store.ssl.conf" ]]; then
+    cat "${APP_ROOT}/deploy/nginx-pimux.store.conf" "${APP_ROOT}/deploy/nginx-pimux.store.ssl.conf" > /etc/nginx/sites-available/pimux.store
+  else
+    cp "${APP_ROOT}/deploy/nginx-pimux.store.conf" /etc/nginx/sites-available/pimux.store
+  fi
+  # Load before other sites that also list this IP (e.g. fight, odds) so this vhost wins for Host: <IP>.
+  rm -f /etc/nginx/sites-enabled/pimux.store
+  ln -sf /etc/nginx/sites-available/pimux.store /etc/nginx/sites-enabled/00-pimux.store
   nginx -t
   systemctl reload nginx
 fi
 
 echo "==> Done. Check: systemctl status gunicorn-restaurant"
-echo "==> API: http://127.0.0.1:8002/api/v1/ (via nginx: your domain)"
+echo "==> API: http://127.0.0.1:8020/api/v1/ (via nginx: your domain)"

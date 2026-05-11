@@ -3,107 +3,632 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#C2543D" />
+  <meta name="theme-color" content="#b84732" />
   <meta name="description" content="Restaurant management CRM — same warm bistro design as the Android app. Use in the browser at your desk or the APK on the floor; one account, live venue data." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="application-name" content="Restaurant CRM" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <title>Restaurant management CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+  <title>Restaurant CRM</title>
   <style>
     :root {
-      --cream: #FFFBF7; --ink: #2C2420; --primary: #C2543D; --on-primary: #fff;
-      --primary-container: #FFE8E0; --on-primary-container: #5C1F14;
-      --secondary: #3D6B58; --on-secondary: #fff;
-      --secondary-container: #D4EBE3; --on-secondary-container: #1A3D32;
-      --tertiary: #C9933D; --tertiary-container: #FFF3D6; --on-tertiary-container: #5C4010;
-      --surface: #fff; --surface-variant: #F0E8E2; --on-surface-variant: #5C534D;
-      --outline-variant: #E0D5CD; --nav-h: 64px;
+      --cream: #f5f2ee;
+      --cream-mid: #ebe6e0;
+      --ink: #1c1917;
+      --muted: #57534e;
+      --primary: #b84732;
+      --primary-deep: #942f1f;
+      --on-primary: #fff;
+      --primary-container: #fde8e3;
+      --on-primary-container: #5c1f14;
+      --secondary: #2d5a47;
+      --secondary-deep: #1f4034;
+      --on-secondary: #fff;
+      --secondary-container: #d2e8df;
+      --on-secondary-container: #143529;
+      --tertiary: #b8892e;
+      --tertiary-deep: #8f6a22;
+      --tertiary-container: #faf0d7;
+      --on-tertiary-container: #4a3510;
+      --surface: #ffffff;
+      --surface-2: #fafaf9;
+      --surface-variant: #f1ebe6;
+      --on-surface-variant: #57534e;
+      --outline: #d6cfc7;
+      --outline-variant: #e8e2dc;
+      --sidebar-w: 228px;
+      --r-lg: 20px;
+      --r-md: 12px;
+      --r-sm: 8px;
+      --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.05);
+      --shadow-md: 0 4px 20px rgba(28, 25, 23, 0.07);
+      --shadow-lg: 0 16px 48px rgba(28, 25, 23, 0.1);
+      --font: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: linear-gradient(165deg, var(--cream) 0%, var(--cream-mid) 50%, #e4ddd6 100%);
+      color: var(--ink);
+      min-height: 100vh;
+      letter-spacing: -0.015em;
+      -webkit-font-smoothing: antialiased;
+    }
     .hidden { display: none !important; }
-    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-    .login-card { background: var(--surface); border-radius: 16px; padding: 28px; width: 100%; max-width: 400px; box-shadow: 0 8px 28px rgba(0,0,0,.12); }
-    .login-card h1 { margin: 0 0 6px; color: var(--primary); font-size: 1.45rem; }
-    .login-card p { margin: 0 0 18px; color: var(--on-surface-variant); font-size: 0.9rem; }
-    label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--on-surface-variant); margin: 10px 0 4px; }
-    input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--outline-variant); font-size: 1rem; }
-    .btn { border: none; border-radius: 10px; padding: 12px 16px; font-weight: 600; font-size: 0.95rem; cursor: pointer; }
-    .btn-primary { background: var(--primary); color: var(--on-primary); width: 100%; margin-top: 16px; }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .err { color: #B71C1C; font-size: 0.85rem; margin-top: 10px; }
-    #app-shell { min-height: 100vh; display: flex; flex-direction: column; padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px)); }
-    .app-main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-    .hdr { background: var(--primary); color: var(--on-primary); padding: 12px 16px; box-shadow: 0 2px 4px rgba(0,0,0,.12); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .hdr.t2 { background: var(--secondary); }
-    .hdr.t3 { background: var(--tertiary); color: var(--on-tertiary-container); }
-    .hdr h1 { margin: 0; font-size: 1.25rem; font-weight: 700; }
-    .hdr p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.92; }
-    .hdr .btn-icon { background: transparent; border: none; color: inherit; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    .pad { padding: 16px; max-width: 900px; margin: 0 auto; }
-    .hero { background: rgba(255,232,224,0.85); border-radius: 12px; padding: 14px; margin-bottom: 12px; display: flex; gap: 14px; align-items: center; }
-    .stat { border-radius: 12px; padding: 16px; margin-bottom: 10px; }
-    .stat.s0 { background: var(--primary-container); color: var(--on-primary-container); }
-    .stat.s1 { background: var(--secondary-container); color: var(--on-secondary-container); }
-    .stat.s2 { background: var(--tertiary-container); color: var(--on-tertiary-container); }
-    .stat .lbl { font-size: 0.78rem; opacity: 0.88; }
-    .stat .val { font-size: 1.35rem; font-weight: 700; margin-top: 4px; }
-    .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--primary-container); color: var(--on-primary-container); display: flex; justify-content: space-around; align-items: flex-start; padding-top: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,.08); z-index: 40; }
-    .nav-item { flex: 1; text-align: center; border: none; background: none; cursor: pointer; padding: 4px 2px; color: inherit; font-size: 0.68rem; font-weight: 500; opacity: 0.72; }
-    .nav-item svg { width: 24px; height: 24px; display: block; margin: 0 auto 2px; }
-    .nav-item.on { opacity: 1; color: var(--primary); font-weight: 700; }
-    .nav-item.on svg { stroke: var(--primary); fill: var(--primary); }
-    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-    .chip { border: none; border-radius: 20px; padding: 8px 14px; font-size: 0.85rem; cursor: pointer; background: var(--surface-variant); color: var(--ink); }
-    .chip.on { background: var(--secondary-container); color: var(--on-secondary-container); font-weight: 600; }
-    .menu-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--outline-variant); gap: 8px; }
-    .menu-row .qty { display: flex; align-items: center; gap: 6px; }
-    .menu-row .qty button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface); cursor: pointer; font-size: 1.1rem; }
-    .dock { background: var(--surface); padding: 16px; margin-top: 8px; border-radius: 12px 12px 0 0; box-shadow: 0 -2px 12px rgba(0,0,0,.06); }
-    .row-btns { display: flex; gap: 8px; margin-top: 10px; }
+    .login-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; gap: 14px; }
+    .ip-banner {
+      max-width: 440px; width: 100%;
+      padding: 14px 18px;
+      background: var(--tertiary-container);
+      border: 1px solid rgba(184, 137, 46, 0.35);
+      border-radius: var(--r-md);
+      font-size: 0.875rem;
+      color: var(--on-tertiary-container);
+      line-height: 1.45;
+    }
+    .ip-banner a { color: var(--primary); font-weight: 600; }
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--r-lg);
+      padding: 2rem 2rem 1.75rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-lg);
+    }
+    .login-brand { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 1.25rem; }
+    .login-brand-mark {
+      flex-shrink: 0;
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, var(--primary) 0%, var(--primary-deep) 100%);
+      color: var(--on-primary);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: var(--shadow-sm);
+    }
+    .login-brand-mark svg { display: block; }
+    .login-brand-text { min-width: 0; }
+    .crm-tag {
+      display: block;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 4px;
+    }
+    .login-title { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--ink); letter-spacing: -0.03em; line-height: 1.2; }
+    .login-lede { margin: 0.65rem 0 0; color: var(--muted); font-size: 0.9375rem; line-height: 1.55; }
+    label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted); margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--outline);
+      font-size: 1rem;
+      font-family: inherit;
+      background: var(--surface-2);
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    input:focus { outline: none; border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 3px rgba(184, 71, 50, 0.18); }
+    .btn {
+      border: none;
+      border-radius: var(--r-sm);
+      padding: 12px 18px;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: -0.01em;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: linear-gradient(180deg, var(--primary) 0%, var(--primary-deep) 100%);
+      color: var(--on-primary);
+      width: 100%;
+      margin-top: 1.25rem;
+      box-shadow: 0 2px 8px rgba(184, 71, 50, 0.35);
+    }
+    .btn-primary:hover { filter: brightness(1.04); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      background: linear-gradient(180deg, var(--secondary) 0%, var(--secondary-deep) 100%);
+      color: var(--on-secondary);
+      box-shadow: 0 2px 8px rgba(45, 90, 71, 0.28);
+    }
+    .btn-secondary:hover { filter: brightness(1.04); }
+    .btn.btn-sm { width: auto; display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; font-size: 0.8125rem; border-radius: var(--r-sm); }
+    .btn-pay { background: linear-gradient(180deg, var(--secondary) 0%, var(--secondary-deep) 100%); color: var(--on-secondary); box-shadow: 0 1px 4px rgba(45, 90, 71, 0.25); }
+    .btn-pay:hover { filter: brightness(1.05); }
+    .err { color: #b91c1c; font-size: 0.8125rem; margin-top: 10px; font-weight: 500; }
+    #app-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      background: var(--surface-2);
+    }
+    .nav-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(28, 25, 23, 0.4);
+      z-index: 45;
+    }
+    .nav-backdrop.open { display: block; }
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--outline-variant);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      z-index: 50;
+    }
+    .sidebar-brand {
+      padding: 20px 16px 18px;
+      border-bottom: 1px solid var(--outline-variant);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .sidebar-brand-mark {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, var(--primary) 0%, var(--primary-deep) 100%);
+      color: var(--on-primary);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .sidebar-brand-mark svg { display: block; }
+    .sidebar-brand-text { min-width: 0; }
+    .sidebar-brand-title { font-size: 0.9375rem; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; margin: 0; line-height: 1.2; }
+    .sidebar-brand-sub { font-size: 0.6875rem; color: var(--muted); margin: 2px 0 0; font-weight: 500; }
+    .sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+    .sidebar-nav { padding: 12px 10px 8px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+    .nav-group { flex-shrink: 0; }
+    .nav-item-ops .nav-chevron {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.75;
+      flex-shrink: 0;
+    }
+    .nav-item-ops .nav-chevron svg {
+      display: block;
+      width: 18px;
+      height: 18px;
+      transition: transform 0.2s ease;
+      fill: none;
+      stroke: currentColor;
+    }
+    .nav-item.on.nav-item-ops .nav-chevron svg { fill: none; }
+    .nav-group.is-open .nav-item-ops .nav-chevron svg { transform: rotate(90deg); }
+    .nav-group-children {
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+      padding: 2px 0 8px 6px;
+      margin: 0 0 2px 18px;
+      border-left: 2px solid var(--outline-variant);
+    }
+    .nav-group.is-open > .nav-group-children { display: flex; }
+    .sidebar-ops-list { display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+    .sidebar-ops-btn {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      text-align: left;
+      border: none;
+      border-radius: var(--r-sm);
+      padding: 8px 12px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .sidebar-ops-btn:hover { background: var(--surface-2); color: var(--ink); }
+    .sidebar-ops-btn.on { background: var(--primary-container); color: var(--primary); }
+    .sidebar-foot { padding: 12px 10px 16px; border-top: 1px solid var(--outline-variant); }
+    .sidebar-logout {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--outline);
+      background: var(--surface-2);
+      color: var(--ink);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .sidebar-logout:hover { background: var(--primary-container); border-color: transparent; color: var(--on-primary-container); }
+    .shell-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .mobile-topbar {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--outline-variant);
+      flex-shrink: 0;
+    }
+    .menu-toggle {
+      width: 42px; height: 42px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--outline);
+      background: var(--surface-2);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink);
+    }
+    .menu-toggle:hover { background: var(--surface-variant); }
+    .mobile-topbar-title { font-size: 0.9375rem; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+    .app-main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
+    .hdr {
+      background: linear-gradient(180deg, var(--primary) 0%, var(--primary-deep) 100%);
+      color: var(--on-primary);
+      padding: 14px 18px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      box-shadow: 0 2px 12px rgba(28, 25, 23, 0.12);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .hdr.t2 { background: linear-gradient(180deg, var(--secondary) 0%, var(--secondary-deep) 100%); }
+    .hdr.t3 { background: linear-gradient(180deg, var(--tertiary) 0%, var(--tertiary-deep) 100%); color: #fff; }
+    .hdr h1 { margin: 0; font-size: 1.125rem; font-weight: 700; letter-spacing: -0.02em; }
+    .hdr p { margin: 3px 0 0; font-size: 0.8125rem; opacity: 0.88; font-weight: 500; }
+    .hdr .btn-icon {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: inherit;
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .hdr .btn-icon:hover { background: rgba(255,255,255,0.2); }
+    .pad { padding: 20px 22px 32px; max-width: 960px; margin: 0 auto; }
+    .pad-dash { max-width: 1100px; }
+    .dash-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    @media (min-width: 900px) {
+      .dash-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        grid-template-rows: auto 1fr;
+        gap: 20px 24px;
+        align-items: start;
+      }
+      .dash-hero-slot { grid-column: 1; grid-row: 1 / span 2; }
+      .dash-stats-slot { grid-column: 2; grid-row: 1; }
+      .dash-below-slot { grid-column: 2; grid-row: 2; }
+    }
+    .dash-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 520px) {
+      .dash-stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .dash-below-slot .hint { margin-top: 0; }
+    .btn-seed { margin-top: 12px; width: 100%; max-width: 320px; }
+    .hero {
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--r-md);
+      padding: 18px 18px 18px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      box-shadow: var(--shadow-sm);
+      border-left: 4px solid var(--primary);
+    }
+    .hero-icon {
+      flex-shrink: 0;
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: var(--primary-container);
+      color: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hero h2 { margin: 0; font-size: 1.0625rem; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+    .hero-dash h2 { font-size: 1.35rem; letter-spacing: -0.03em; }
+    .dash-kicker {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--primary);
+      margin: 0 0 4px;
+    }
+    .dash-metrics-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+    .stat {
+      border-radius: var(--r-md);
+      padding: 16px 18px;
+      margin-bottom: 10px;
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      box-shadow: var(--shadow-sm);
+    }
+    .stat.s0 { border-left: 3px solid var(--primary); }
+    .stat.s1 { border-left: 3px solid var(--secondary); }
+    .stat.s2 { border-left: 3px solid var(--tertiary); }
+    .stat .lbl { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat .val { font-size: 1.5rem; font-weight: 700; margin-top: 6px; color: var(--ink); letter-spacing: -0.03em; }
+    .dash-stats-grid .stat { margin-bottom: 0; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      text-align: left;
+      border: none;
+      border-radius: var(--r-sm);
+      padding: 11px 12px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .nav-item svg { width: 22px; height: 22px; flex-shrink: 0; opacity: 0.85; fill: currentColor; }
+    .nav-item:hover { background: var(--surface-2); color: var(--ink); }
+    .nav-item.on {
+      background: var(--primary-container);
+      color: var(--primary);
+    }
+    .nav-item.on svg { opacity: 1; fill: var(--primary); }
+    .nav-label { letter-spacing: -0.01em; }
+    @media (max-width: 900px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+        transition: transform 0.22s ease;
+        box-shadow: var(--shadow-lg);
+      }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-topbar { display: flex; }
+    }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .chip {
+      border: 1px solid var(--outline);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--surface);
+      color: var(--ink);
+      font-family: inherit;
+    }
+    .chip.on { background: var(--secondary-container); border-color: transparent; color: var(--on-secondary-container); font-weight: 600; }
+    .menu-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--outline-variant); gap: 10px; }
+    .menu-row .qty { display: flex; align-items: center; gap: 8px; }
+    .menu-row .qty button {
+      width: 36px; height: 36px; border-radius: var(--r-sm);
+      border: 1px solid var(--outline);
+      background: var(--surface);
+      cursor: pointer; font-size: 1.1rem;
+      font-family: inherit;
+    }
+    .pad-pos { max-width: 1120px; }
+    .pos-menu-grid {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: stretch;
+      margin-top: 6px;
+    }
+    .pos-tile {
+      flex: 1 1 158px;
+      min-width: 148px;
+      max-width: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 14px 14px 12px;
+      border-radius: var(--r-md);
+      border: 2px solid var(--outline-variant);
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+    }
+    .pos-tile:focus-visible {
+      box-shadow: 0 0 0 3px rgba(184, 71, 50, 0.35), var(--shadow-md);
+    }
+    .pos-tile:hover {
+      border-color: var(--outline);
+      box-shadow: var(--shadow-md);
+    }
+    .pos-tile:active { transform: scale(0.99); }
+    .pos-tile.selected {
+      border-color: var(--primary);
+      background: linear-gradient(180deg, var(--primary-container) 0%, var(--surface) 42%);
+      box-shadow: 0 0 0 3px rgba(184, 71, 50, 0.2), var(--shadow-md);
+    }
+    .pos-tile-cat {
+      display: block;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+    .pos-tile-name {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--ink);
+      letter-spacing: -0.02em;
+      margin: 0 0 8px;
+    }
+    .pos-tile-price {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--secondary-deep);
+      letter-spacing: -0.02em;
+    }
+    .pos-tile-qty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--outline-variant);
+    }
+    .pos-tile-qty span {
+      min-width: 1.5rem;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--ink);
+    }
+    .pos-tile-qty button {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--outline);
+      background: var(--surface-2);
+      cursor: pointer;
+      font-size: 1.2rem;
+      line-height: 1;
+      font-family: inherit;
+      font-weight: 600;
+      color: var(--ink);
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .pos-tile-qty button:hover { background: var(--surface); border-color: var(--primary); color: var(--primary); }
+    .price-muted { font-size: 0.8125rem; color: var(--muted); font-weight: 500; }
+    .dock {
+      background: var(--surface);
+      padding: 18px;
+      margin-top: 12px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--outline-variant);
+      box-shadow: var(--shadow-md);
+    }
+    .row-btns { display: flex; gap: 10px; margin-top: 12px; }
     .row-btns .btn { flex: 1; }
-    .btn-outline { background: transparent; border: 1px solid var(--outline-variant); color: var(--ink); }
-    .card { background: var(--surface-variant); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
-    .card.k { background: var(--secondary-container); color: var(--on-secondary-container); }
-    .ops-card { border-radius: 12px; margin-bottom: 10px; padding: 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; border: none; width: 100%; text-align: left; font: inherit; box-shadow: 0 1px 2px rgba(44,36,32,.06); }
-    .ops-card.v0 { background: var(--primary-container); color: var(--on-primary-container); }
-    .ops-card.v1 { background: var(--secondary-container); color: var(--on-secondary-container); }
-    .ops-card.v2 { background: var(--tertiary-container); color: var(--on-tertiary-container); }
-    .ops-badge { width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px; padding: 4px; display: flex; align-items: center; justify-content: center; }
-    .ops-badge-inner { width: 100%; height: 100%; border-radius: 10px; background: rgba(255,255,255,.95); display: flex; align-items: center; justify-content: center; font-size: 1.35rem; }
-    .back-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-    .back-bar button { border: none; background: none; color: var(--primary); font-weight: 600; cursor: pointer; font-size: 0.95rem; }
-    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(44,36,32,.45); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+    .btn-outline { background: var(--surface); border: 1px solid var(--outline); color: var(--ink); }
+    .btn-outline:hover { background: var(--surface-2); }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--r-md);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow-sm);
+    }
+    .card.k { background: var(--secondary-container); border-color: rgba(45, 90, 71, 0.15); color: var(--on-secondary-container); }
+    .ops-card {
+      border-radius: var(--r-md);
+      margin-bottom: 10px;
+      padding: 16px 18px;
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer;
+      border: 1px solid var(--outline-variant);
+      width: 100%; text-align: left; font: inherit;
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.15s, border-color 0.15s, transform 0.12s;
+    }
+    .ops-card:hover { box-shadow: var(--shadow-md); border-color: var(--outline); }
+    .ops-card:active { transform: scale(0.995); }
+    .ops-card.v0 { border-left: 3px solid var(--primary); }
+    .ops-card.v1 { border-left: 3px solid var(--secondary); }
+    .ops-card.v2 { border-left: 3px solid var(--tertiary); }
+    .ops-badge { width: 46px; height: 46px; flex-shrink: 0; border-radius: 12px; padding: 0; display: flex; align-items: center; justify-content: center; background: var(--surface-2); border: 1px solid var(--outline-variant); }
+    .ops-badge-inner { width: 100%; height: 100%; border-radius: 11px; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
+    .back-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .back-bar button { border: none; background: none; color: var(--primary); font-weight: 600; cursor: pointer; font-size: 0.875rem; font-family: inherit; }
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(28, 25, 23, 0.45); z-index: 85; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
     .modal-backdrop.open { display: flex; }
-    #planBackdrop { z-index: 60; }
-    .modal { background: #fff; border-radius: 16px; max-width: 420px; width: 100%; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,.2); }
+    #planBackdrop { z-index: 95; }
+    .modal { background: var(--surface); border-radius: var(--r-lg); max-width: 420px; width: 100%; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); border: 1px solid var(--outline-variant); }
     .modal-wide { max-width: 480px; }
-    .modal-h { padding: 16px 18px 10px; border-bottom: 1px solid var(--outline-variant); }
-    .modal-h h2 { margin: 0; font-size: 1.1rem; }
-    .modal-body { padding: 14px 18px; overflow-y: auto; flex: 1; }
-    .modal-actions { padding: 10px 14px; border-top: 1px solid var(--outline-variant); display: flex; justify-content: flex-end; }
-    .btn-text { border: none; background: transparent; color: var(--primary); font-weight: 600; padding: 10px 14px; cursor: pointer; border-radius: 8px; }
-    .plan-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--outline-variant); cursor: pointer; width: 100%; text-align: left; border-left: none; border-right: none; border-top: none; background: none; font: inherit; }
+    .modal-h { padding: 18px 20px 14px; border-bottom: 1px solid var(--outline-variant); }
+    .modal-h h2 { margin: 0; font-size: 1.0625rem; font-weight: 700; }
+    .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+    .modal-actions { padding: 12px 16px; border-top: 1px solid var(--outline-variant); display: flex; justify-content: flex-end; }
+    .btn-text { border: none; background: transparent; color: var(--primary); font-weight: 600; padding: 10px 14px; cursor: pointer; border-radius: var(--r-sm); font-family: inherit; }
+    .plan-row { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--outline-variant); cursor: pointer; width: 100%; text-align: left; border-left: none; border-right: none; border-top: none; background: none; font: inherit; }
     .plan-price { color: var(--primary); font-weight: 700; min-width: 4.2rem; }
     .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-    .pay-btn { padding: 10px 6px; border-radius: 10px; border: none; background: var(--primary); color: #fff; font-weight: 600; font-size: 0.8rem; cursor: pointer; }
+    .pay-btn { padding: 10px 8px; border-radius: var(--r-sm); border: none; background: var(--primary); color: #fff; font-weight: 600; font-size: 0.75rem; cursor: pointer; font-family: inherit; }
     .pay-btn.sec { background: var(--ink); }
-    table.data { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    table.data th, table.data td { padding: 8px 6px; border-bottom: 1px solid var(--outline-variant); text-align: left; }
-    .hint { font-size: 0.82rem; color: var(--on-surface-variant); line-height: 1.4; margin: 8px 0; }
+    table.data { width: 100%; border-collapse: collapse; font-size: 0.875rem; background: var(--surface); border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--outline-variant); }
+    table.data th, table.data td { padding: 10px 12px; border-bottom: 1px solid var(--outline-variant); text-align: left; }
+    table.data th { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; background: var(--surface-2); }
+    .hint { font-size: 0.8125rem; color: var(--muted); line-height: 1.5; margin: 8px 0; }
     .platform-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
-    .platform-pill { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px; background: var(--secondary-container); color: var(--on-secondary-container); }
-    .platform-pill.web { background: var(--primary-container); color: var(--on-primary-container); }
-    .crm-tag { display: inline-block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; color: var(--secondary); margin-bottom: 6px; }
+    .platform-pill { font-size: 0.625rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--outline); }
+    .platform-pill.web { background: var(--primary-container); color: var(--on-primary-container); border-color: transparent; }
   </style>
 </head>
 <body>
   <div id="screen-login" class="login-wrap">
+    <div id="ip-banner" class="ip-banner hidden">
+      You opened this CRM by <strong>IP address</strong>. On this shared server the IP also runs other sites — use <a href="https://pimux.store/">https://pimux.store</a> (or <code>/app/</code> on that host) so you always hit the restaurant app.
+    </div>
     <div class="login-card">
-      <span class="crm-tag">Operations CRM</span>
-      <h1>Restaurant management</h1>
-      <p>Same palette and flows as the <strong>Android APK</strong> — use this in the <strong>browser</strong> for back-office and the app on devices. One venue account (phone or username + password).</p>
+      <div class="login-brand">
+        <div class="login-brand-mark" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M4 20V4h8a4 4 0 014 4 4 4 0 01-4 4H8v8H4zm8-8a2 2 0 002-2 2 2 0 00-2-2H8v4h4z"/></svg>
+        </div>
+        <div class="login-brand-text">
+          <span class="crm-tag">Venue operations</span>
+          <h1 class="login-title">Restaurant CRM</h1>
+        </div>
+      </div>
+      <p class="login-lede">Professional workspace for your venue — use in the browser for back office and the Android app on the floor. One account: phone or username and password.</p>
       <label>Login</label>
       <input id="loginId" type="text" autocomplete="username" placeholder="Phone or username" />
       <label>Password</label>
@@ -115,22 +640,91 @@
 
   <div id="screen-app" class="hidden">
     <div id="app-shell">
-      <div class="app-main">
+      <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
+      <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-mark" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M4 20V4h8a4 4 0 014 4 4 4 0 01-4 4H8v8H4zm8-8a2 2 0 002-2 2 2 0 00-2-2H8v4h4z"/></svg>
+          </div>
+          <div class="sidebar-brand-text">
+            <p class="sidebar-brand-title">Restaurant CRM</p>
+            <p class="sidebar-brand-sub">Venue workspace</p>
+          </div>
+        </div>
+        <div class="sidebar-scroll">
+        <nav class="sidebar-nav" id="sidebar-nav">
+          <button type="button" class="nav-item on" data-tab="dashboard">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            <span class="nav-label">Dashboard</span>
+          </button>
+          <button type="button" class="nav-item" data-tab="pos">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+            <span class="nav-label">Point of sale</span>
+          </button>
+          <button type="button" class="nav-item hidden" data-tab="kitchen" id="nav-kitchen">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M8.1 13.34l2.83-2.83L3.91 3.5c-1.56 1.56-1.56 4.09 0 5.66l4.19 4.18zm6.78-1.81c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41L12 14.41l6.88 6.88 1.41-1.41L13.41 13l1.47-1.47z"/></svg>
+            <span class="nav-label">Kitchen</span>
+          </button>
+          <div class="nav-group" id="nav-group-ops">
+            <button type="button" class="nav-item nav-item-ops" id="nav-more" aria-expanded="false" aria-controls="sidebar-ops-children" aria-label="Show or hide operation modules">
+              <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
+              <span class="nav-label">Operations</span>
+              <span class="nav-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>
+            </button>
+            <div class="nav-group-children" id="sidebar-ops-children" role="group" aria-label="Operation modules">
+              <div class="sidebar-ops-list" id="sidebar-ops-list"></div>
+            </div>
+          </div>
+        </nav>
+        </div>
+        <div class="sidebar-foot">
+          <button type="button" class="sidebar-logout" id="btnSidebarLogout">Sign out</button>
+        </div>
+      </aside>
+      <div class="shell-content">
+        <header class="mobile-topbar">
+          <button type="button" class="menu-toggle" id="btnNavToggle" aria-label="Open menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <span class="mobile-topbar-title" id="topbarTitle">Dashboard</span>
+        </header>
+        <div class="app-main">
         <div id="page-dashboard" class="page">
-          <header class="hdr"><div><h1>Dashboard</h1><p>Today's snapshot</p></div>
-            <button type="button" class="btn-icon" id="btnLogout" title="Sign out" aria-label="Sign out">⎋</button>
+          <header class="hdr"><div><h1>Dashboard</h1><p>Today at a glance</p></div>
+            <button type="button" class="btn-icon" id="btnLogout" title="Sign out" aria-label="Sign out">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+            </button>
           </header>
-          <div class="pad">
-            <div class="hero"><div style="font-size:2.5rem">🍲</div><div><strong>From kitchen to table</strong><p class="hint" style="margin:6px 0 0">CRM snapshot for your venue — same Material-style theme as the APK (terracotta, sage, honey on cream).</p><div class="platform-row"><span class="platform-pill web">Browser CRM</span><span class="platform-pill">Android APK</span></div></div></div>
-            <div id="dash-stats"></div>
-            <p class="hint">Net profit uses paid sales today, minus expenses logged today, and one day’s share of staff salaries (monthly ÷ 30).</p>
-            <button type="button" class="btn btn-primary" id="btnSeed" style="margin-top:8px;background:var(--secondary)">Load sample tables &amp; menu (once)</button>
+          <div class="pad pad-dash">
+            <div class="dash-layout">
+              <div class="dash-hero-slot">
+                <div class="hero hero-dash">
+                  <div class="hero-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+                  </div>
+                  <div>
+                    <p class="dash-kicker">Overview</p>
+                    <h2>Today’s performance</h2>
+                    <p class="hint" style="margin:8px 0 0">Key figures for this venue — web and Android use the same live data.</p>
+                    <div class="platform-row"><span class="platform-pill web">Web</span><span class="platform-pill">Android</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="dash-stats-slot">
+                <p class="dash-metrics-title">Key metrics</p>
+                <div id="dash-stats" class="dash-stats-grid"></div>
+              </div>
+              <div class="dash-below-slot">
+                <p class="hint">Net profit uses paid sales today, minus expenses logged today, and one day’s share of staff salaries (monthly ÷ 30).</p>
+                <button type="button" class="btn btn-secondary btn-seed" id="btnSeed">Load sample tables &amp; menu (once)</button>
+              </div>
+            </div>
           </div>
         </div>
         <div id="page-pos" class="page hidden">
-          <header class="hdr t2"><div><h1>Point of sale</h1><p>Counter &amp; takeaway</p></div></header>
-          <div class="pad">
-            <p class="hint">Tap category chips, adjust quantities, then place order.</p>
+          <header class="hdr t2"><div><h1>Point of sale</h1><p>Counter &amp; takeaway orders</p></div></header>
+          <div class="pad pad-pos">
+            <p class="hint">Tap an item to select it (highlighted). Use + / − to add to the cart, then place order. Filter with category chips.</p>
             <div class="chip-row" id="pos-chips"></div>
             <div id="pos-menu"></div>
             <div id="pos-orders"></div>
@@ -144,11 +738,11 @@
           </div>
         </div>
         <div id="page-kitchen" class="page hidden">
-          <header class="hdr t3"><div><h1>Kitchen</h1><p>Tap a line to bump status</p></div></header>
+          <header class="hdr t3"><div><h1>Kitchen</h1><p>Ticket queue — tap a line to advance</p></div></header>
           <div class="pad" id="kitchen-body"></div>
         </div>
         <div id="page-more" class="page hidden">
-          <header class="hdr"><div><h1>Operations</h1><p>Back-office modules — scroll for more</p></div>
+          <header class="hdr"><div><h1>Operations</h1><p>Back office &amp; configuration</p></div>
             <button type="button" class="btn-icon" id="openProfile" aria-label="Profile"><svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
           </header>
           <div class="pad" id="more-hub">
@@ -161,12 +755,7 @@
           </div>
         </div>
       </div>
-      <nav class="bottom-nav" id="bottom-nav">
-        <button type="button" class="nav-item on" data-tab="dashboard"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home</button>
-        <button type="button" class="nav-item" data-tab="pos"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>POS</button>
-        <button type="button" class="nav-item hidden" data-tab="kitchen" id="nav-kitchen"><span style="font-size:1.35rem;line-height:1;display:block">🍳</span>Kitchen</button>
-        <button type="button" class="nav-item" data-tab="more"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>More</button>
-      </nav>
+      </div>
     </div>
   </div>
 
@@ -187,8 +776,8 @@
     <div class="modal-actions"><button type="button" class="btn-text" id="closePlan">Back</button></div>
   </div></div>
 
-  {% json_script web_modules "web-modules-data" %}
-  {% json_script billing_plans "billing-plans-data" %}
+  {{ web_modules|json_script:"web-modules-data" }}
+  {{ billing_plans|json_script:"billing-plans-data" }}
 
   <script>
   (function(){
@@ -200,7 +789,14 @@
     var sync = null;
     var cart = {};
     var posCat = null;
+    var posSelectedId = null;
+    var currentOpsSlug = null;
     var token = localStorage.getItem(TOKEN_KEY);
+    (function(){
+      var h = location.hostname;
+      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h) || (h.indexOf(':') >= 0 && h.indexOf('.') < 0))
+        { var b = document.getElementById('ip-banner'); if (b) b.classList.remove('hidden'); }
+    })();
 
     function $(id){ return document.getElementById(id); }
     function money(c){ return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format((c||0)/100); }
@@ -257,28 +853,70 @@
       cats.forEach(function(c){ chipHtml += '<button type="button" class="chip'+(posCat===c?' on':'')+'" data-cat="'+escapeHtml(c)+'">'+escapeHtml(c)+'</button>'; });
       $('pos-chips').innerHTML = chipHtml;
       $('pos-chips').querySelectorAll('.chip').forEach(function(b){
-        b.onclick = function(){ posCat = b.getAttribute('data-cat')||null; if(posCat==='') posCat=null; renderPos(); };
+        b.onclick = function(){
+          posCat = b.getAttribute('data-cat')||null;
+          if (posCat === '') posCat = null;
+          posSelectedId = null;
+          renderPos();
+        };
       });
       var list = menu.filter(function(m){ return posCat===null || m.category===posCat; });
+      if (posSelectedId != null && !list.some(function(m){ return m.id === posSelectedId; })) posSelectedId = null;
       var mh = '';
       list.forEach(function(m){
         var q = cart[m.id]||0;
-        mh += '<div class="menu-row"><div><strong>'+escapeHtml(m.name)+'</strong><br/><span style="font-size:0.85rem;color:#5C534D">'+money(m.price_cents)+'</span></div>'+
-          '<div class="qty"><button type="button" data-d="-1" data-id="'+m.id+'">−</button><span>'+q+'</span><button type="button" data-d="1" data-id="'+m.id+'">+</button></div></div>';
+        var sel = posSelectedId === m.id ? ' selected' : '';
+        mh +=
+          '<div class="pos-tile'+sel+'" data-id="'+m.id+'" role="button" tabindex="0" aria-pressed="'+(posSelectedId===m.id?'true':'false')+'">'+
+          '<span class="pos-tile-cat">'+escapeHtml(m.category||'Menu')+'</span>'+
+          '<span class="pos-tile-name">'+escapeHtml(m.name)+'</span>'+
+          '<span class="pos-tile-price">'+money(m.price_cents)+'</span>'+
+          '<div class="pos-tile-qty">'+
+          '<button type="button" data-d="-1" data-id="'+m.id+'" aria-label="Decrease quantity">−</button>'+
+          '<span>'+q+'</span>'+
+          '<button type="button" data-d="1" data-id="'+m.id+'" aria-label="Increase quantity">+</button>'+
+          '</div></div>';
       });
-      $('pos-menu').innerHTML = mh || '<p class="hint">No menu items. Use “Load sample…” on Home or add items in Global settings.</p>';
-      $('pos-menu').querySelectorAll('.qty button').forEach(function(b){
-        b.onclick = function(){ var id=+b.getAttribute('data-id'), d=+b.getAttribute('data-d'); cart[id]=Math.max(0,(cart[id]||0)+d); if(!cart[id]) delete cart[id]; renderPos(); };
-      });
+      $('pos-menu').innerHTML =
+        (mh ? '<div class="pos-menu-grid">' + mh + '</div>' : '') ||
+        '<p class="hint">No menu items. Use “Load sample…” on Home or add items in Global settings.</p>';
+      if (!$('pos-menu').dataset.posClickWired) {
+        $('pos-menu').dataset.posClickWired = '1';
+        $('pos-menu').addEventListener('click', function(e){
+          var dec = e.target.closest('.pos-tile-qty button[data-d]');
+          if (dec) {
+            e.preventDefault();
+            var id = +dec.getAttribute('data-id');
+            var d = +dec.getAttribute('data-d');
+            cart[id] = Math.max(0, (cart[id] || 0) + d);
+            if (!cart[id]) delete cart[id];
+            renderPos();
+            return;
+          }
+          var tile = e.target.closest('.pos-tile');
+          if (tile && !e.target.closest('.pos-tile-qty')) {
+            posSelectedId = +tile.getAttribute('data-id');
+            renderPos();
+          }
+        });
+        $('pos-menu').addEventListener('keydown', function(e){
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          var tile = e.target.closest('.pos-tile');
+          if (!tile || e.target.closest('.pos-tile-qty')) return;
+          e.preventDefault();
+          posSelectedId = +tile.getAttribute('data-id');
+          renderPos();
+        });
+      }
       var total = 0; Object.keys(cart).forEach(function(id){ var m=menu.find(function(x){ return x.id==+id; }); if(m) total += m.price_cents*(cart[id]||0); });
       $('cart-total').textContent = money(total);
       var open = (sync.orders||[]).filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status)<0; });
       var oh = '<p class="hint"><strong>Active orders</strong></p>';
       open.forEach(function(o){
         oh += '<div class="card"><div>Order #'+o.id+' · '+o.status+' · '+money(o.total_cents)+'</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">';
-        if (o.status==='OPEN') oh += '<button type="button" class="btn btn-primary" style="padding:8px 12px;font-size:0.85rem" data-act="kitchen" data-oid="'+o.id+'">Send kitchen</button>';
-        if (['PAID','CANCELLED'].indexOf(o.status)<0) oh += '<button type="button" class="btn btn-primary" style="padding:8px 12px;font-size:0.85rem;background:#3D6B58" data-act="pay" data-oid="'+o.id+'">Pay</button>';
-        if (o.status!=='PAID') oh += '<button type="button" class="btn btn-outline" style="padding:8px 12px;font-size:0.85rem" data-act="cancel" data-oid="'+o.id+'">Cancel</button>';
+        if (o.status==='OPEN') oh += '<button type="button" class="btn btn-primary btn-sm" data-act="kitchen" data-oid="'+o.id+'">Send kitchen</button>';
+        if (['PAID','CANCELLED'].indexOf(o.status)<0) oh += '<button type="button" class="btn btn-sm btn-pay" data-act="pay" data-oid="'+o.id+'">Pay</button>';
+        if (o.status!=='PAID') oh += '<button type="button" class="btn btn-outline btn-sm" data-act="cancel" data-oid="'+o.id+'">Cancel</button>';
         oh += '</div></div>';
       });
       $('pos-orders').innerHTML = open.length?oh:'';
@@ -327,21 +965,65 @@
       });
     }
 
-    function renderOpsCards(){
-      var f = parseModules((sync&&sync.settings&&sync.settings.modules_json)||'');
-      var el = $('ops-cards'); el.innerHTML = '';
-      WEB_MODULES.forEach(function(m){
-        if (!hubOk(m.slug, f)) return;
-        var b = document.createElement('button');
-        b.type = 'button'; b.className = 'ops-card v'+m.card_variant;
-        b.innerHTML = '<div class="ops-badge" style="background:linear-gradient(135deg,'+m.ring_color+'85,rgba(201,147,61,0.38))"><div class="ops-badge-inner">'+m.badge_emoji+'</div></div>'+
-          '<div><p style="margin:0;font-weight:600">'+escapeHtml(m.title)+'</p><p style="margin:4px 0 0;font-size:0.82rem;opacity:0.88">'+escapeHtml(m.subtitle)+'</p></div>';
-        b.onclick = function(){ openModule(m.slug, m.title); };
-        el.appendChild(b);
+    function setSidebarOpsActive(slug){
+      var root = $('sidebar-ops-list');
+      if (!root) return;
+      root.querySelectorAll('.sidebar-ops-btn').forEach(function(btn){
+        btn.classList.toggle('on', !!(slug && btn.getAttribute('data-mod-slug')===slug));
       });
     }
 
+    function setOpsNavExpanded(open){
+      var g = $('nav-group-ops'), b = $('nav-more');
+      if (g) g.classList.toggle('is-open', !!open);
+      if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function toggleOpsNav(){
+      var g = $('nav-group-ops');
+      if (!g) return;
+      setOpsNavExpanded(!g.classList.contains('is-open'));
+    }
+
+    function renderOpsCards(){
+      var f = parseModules((sync&&sync.settings&&sync.settings.modules_json)||'');
+      var modules = WEB_MODULES.filter(function(m){ return hubOk(m.slug, f); });
+      var el = $('ops-cards');
+      if (el) {
+        el.innerHTML = '';
+        modules.forEach(function(m){
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'ops-card v'+m.card_variant;
+          b.innerHTML = '<div class="ops-badge" style="background:linear-gradient(135deg,'+m.ring_color+'85,rgba(201,147,61,0.38))"><div class="ops-badge-inner">'+m.badge_emoji+'</div></div>'+
+            '<div><p style="margin:0;font-weight:600">'+escapeHtml(m.title)+'</p><p style="margin:4px 0 0;font-size:0.82rem;opacity:0.88">'+escapeHtml(m.subtitle)+'</p></div>';
+          b.onclick = function(){ openModule(m.slug, m.title); };
+          el.appendChild(b);
+        });
+      }
+      var sol = $('sidebar-ops-list');
+      if (sol) {
+        sol.innerHTML = '';
+        modules.forEach(function(m){
+          var sb = document.createElement('button');
+          sb.type = 'button';
+          sb.className = 'sidebar-ops-btn';
+          sb.setAttribute('data-mod-slug', m.slug);
+          sb.setAttribute('data-mod-title', m.title);
+          sb.textContent = m.title;
+          sol.appendChild(sb);
+        });
+      }
+      setSidebarOpsActive(currentOpsSlug);
+    }
+
     function openModule(slug, title){
+      var pm = $('page-more');
+      if (!pm || pm.classList.contains('hidden')) {
+        showTab('more', { preserveMoreModule: true });
+      }
+      currentOpsSlug = slug;
+      setOpsNavExpanded(true);
+      setSidebarOpsActive(slug);
       $('more-hub').classList.add('hidden');
       $('more-detail').classList.remove('hidden');
       $('moreTitle').textContent = title;
@@ -360,7 +1042,12 @@
       if (slug==='qr_menu'){ renderQr(mc); return; }
       mc.innerHTML = '<p class="hint">Open this section in the Android app for the full experience.</p>';
     }
-    $('moreBack').onclick = function(){ $('more-detail').classList.add('hidden'); $('more-hub').classList.remove('hidden'); };
+    $('moreBack').onclick = function(){
+      currentOpsSlug = null;
+      setSidebarOpsActive(null);
+      $('more-detail').classList.add('hidden');
+      $('more-hub').classList.remove('hidden');
+    };
 
     function renderSettings(el){
       var s = (sync&&sync.settings)||{};
@@ -422,7 +1109,7 @@
     }
     function renderMenuAdmin(el){
       var rows = (sync.menu_items||[]).map(function(m){
-        return '<tr><td>'+escapeHtml(m.name)+'</td><td>'+escapeHtml(m.category)+'</td><td>'+money(m.price_cents)+'</td><td><button type="button" class="btn-text" data-mid="'+m.id+'">'+(m.is_available?'86':'Stock')+'</button></td></tr>';
+        return '<tr><td>'+escapeHtml(m.name)+'</td><td>'+escapeHtml(m.category)+'</td><td>'+money(m.price_cents)+'</td><td><button type="button" class="btn-text" data-mid="'+m.id+'">'+(m.is_available?'On menu':'Hidden')+'</button></td></tr>';
       }).join('');
       el.innerHTML = '<table class="data"><thead><tr><th>Name</th><th>Cat</th><th>Price</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
       el.querySelectorAll('button[data-mid]').forEach(function(b){
@@ -438,20 +1125,63 @@
 
     function escapeHtml(s){ var d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
 
-    function showTab(tab){
+    function closeMobileNav(){
+      var s = $('sidebar'), b = $('navBackdrop');
+      if (s) s.classList.remove('open');
+      if (b) b.classList.remove('open');
+    }
+    function showTab(tab, opts){
+      opts = opts || {};
+      if (tab !== 'more') {
+        currentOpsSlug = null;
+        setSidebarOpsActive(null);
+        setOpsNavExpanded(false);
+      }
       document.querySelectorAll('.page').forEach(function(p){ p.classList.add('hidden'); });
       $('page-'+tab).classList.remove('hidden');
-      document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.toggle('on', n.getAttribute('data-tab')===tab); });
+      document.querySelectorAll('.nav-item[data-tab]').forEach(function(n){
+        n.classList.toggle('on', n.getAttribute('data-tab') === tab);
+      });
+      var navMoreEl = $('nav-more');
+      if (navMoreEl) navMoreEl.classList.toggle('on', tab === 'more');
+      var titles = { dashboard: 'Dashboard', pos: 'Point of sale', kitchen: 'Kitchen', more: 'Operations' };
+      var tb = $('topbarTitle');
+      if (tb) tb.textContent = titles[tab] || 'Restaurant CRM';
       if (tab==='dashboard') dashStats();
       if (tab==='pos') renderPos();
       if (tab==='kitchen') renderKitchen();
-      if (tab==='more'){ $('more-detail').classList.add('hidden'); $('more-hub').classList.remove('hidden'); renderOpsCards(); }
+      if (tab==='more'){
+        if (!opts.preserveMoreModule) {
+          currentOpsSlug = null;
+          $('more-detail').classList.add('hidden');
+          $('more-hub').classList.remove('hidden');
+        }
+        renderOpsCards();
+      }
+      closeMobileNav();
     }
 
     function wireNav(){
-      document.querySelectorAll('.nav-item').forEach(function(n){
+      document.querySelectorAll('.nav-item[data-tab]').forEach(function(n){
         n.onclick = function(){ showTab(n.getAttribute('data-tab')); };
       });
+      var nm = $('nav-more');
+      if (nm) nm.onclick = function(){ toggleOpsNav(); };
+      var sol = $('sidebar-ops-list');
+      if (sol) sol.addEventListener('click', function(e){
+        var b = e.target.closest('button[data-mod-slug]');
+        if (!b) return;
+        var slug = b.getAttribute('data-mod-slug'), title = b.getAttribute('data-mod-title') || '';
+        openModule(slug, title);
+      });
+      var t = $('btnNavToggle'), bd = $('navBackdrop');
+      if (t && $('sidebar')) {
+        t.onclick = function(){
+          $('sidebar').classList.toggle('open');
+          if (bd) bd.classList.toggle('open');
+        };
+      }
+      if (bd) bd.onclick = closeMobileNav;
     }
 
     function applyModulesNav(){
@@ -517,11 +1247,17 @@
       });
     };
     $('btnSeed').onclick = function(){ api('POST','/sync/seed-defaults/',{}).then(function(r){ if(r.ok) loadSync().then(function(){ dashStats(); renderPos(); alert('Sample data loaded.'); }); else alert('Seed failed (maybe already has data).'); }); };
-    $('btnLogout').onclick = function(){
+    function doLogout(){
       if (token) api('POST','/auth/logout/',{});
       token=null; localStorage.removeItem(TOKEN_KEY);
+      currentOpsSlug = null;
+      setSidebarOpsActive(null);
+      setOpsNavExpanded(false);
+      closeMobileNav();
       $('screen-app').classList.add('hidden'); $('screen-login').classList.remove('hidden');
-    };
+    }
+    $('btnLogout').onclick = doLogout;
+    $('btnSidebarLogout').onclick = doLogout;
     $('btnPlace').onclick = function(){
       var lines = Object.keys(cart).filter(function(id){ return cart[id]>0; }).map(function(id){ return {menu_item_id:+id, quantity:cart[id]}; });
       if (!lines.length) return;

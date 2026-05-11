@@ -64,8 +64,8 @@ def web_app_manifest(request):
         "start_url": start,
         "scope": "/",
         "display": "standalone",
-        "background_color": "#FFFBF7",
-        "theme_color": "#C2543D",
+        "background_color": "#f5f2ee",
+        "theme_color": "#b84732",
     }
     return HttpResponse(
         json.dumps(body),
