@@ -180,9 +180,46 @@ class VenueOrderWriteSerializer(serializers.ModelSerializer):
 
 
 class OrderLinePatchSerializer(serializers.ModelSerializer):
+    """PATCH kitchen line status and/or quantity (quantity ≥ 1; use DELETE to remove a line)."""
+
     class Meta:
         model = OrderLine
-        fields = ("kitchen_status",)
+        fields = ("kitchen_status", "quantity")
+
+    def validate_quantity(self, value: int) -> int:
+        if value < 1:
+            raise serializers.ValidationError("Quantity must be at least 1. Remove the line with DELETE instead.")
+        return value
+
+
+class OrderLineCreateSerializer(serializers.Serializer):
+    """Add a line to an existing order (kitchen / POS corrections)."""
+
+    order_id = serializers.IntegerField()
+    menu_item_id = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1, max_value=99)
+    kitchen_status = serializers.CharField(required=False, default="QUEUED", max_length=32)
+
+    def create(self, validated_data):
+        request = self.context["request"]
+        user = request.user
+        try:
+            order = VenueOrder.objects.get(pk=validated_data["order_id"], owner=user)
+        except VenueOrder.DoesNotExist as exc:
+            raise serializers.ValidationError({"order_id": "Unknown order."}) from exc
+        if order.status in ("PAID", "CANCELLED"):
+            raise serializers.ValidationError({"order_id": "Cannot edit this order."})
+        try:
+            mi = MenuItem.objects.get(pk=validated_data["menu_item_id"], owner=user, is_available=True)
+        except MenuItem.DoesNotExist as exc:
+            raise serializers.ValidationError({"menu_item_id": "Invalid or unavailable item."}) from exc
+        return OrderLine.objects.create(
+            order=order,
+            menu_item=mi,
+            quantity=validated_data["quantity"],
+            unit_price_cents=mi.price_cents,
+            kitchen_status=validated_data.get("kitchen_status", "QUEUED"),
+        )
 
 
 class InventoryItemSerializer(serializers.ModelSerializer):

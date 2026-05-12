@@ -15,6 +15,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.templatetags.static import static as static_url
 
+from .views_download import apk_cache_version
 from .views_operations import (
     ACCENT_RING,
     BADGE_EMOJI,
@@ -94,6 +95,7 @@ def web_app(request: HttpRequest, workspace_module: str | None = None):
             "upi_vpa": vpa,
             "web_route": _web_route_from_request(request, workspace_module=workspace_module),
             "food_static_base": static_url("venue/food/"),
+            "apk_cache_bust": apk_cache_version(),
         },
     )
 

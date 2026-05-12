@@ -107,7 +107,9 @@ import com.restaurant.management.ui.util.centsToInrPlainInput
 import com.restaurant.management.ui.util.formatCents
 import com.restaurant.management.ui.util.hubRouteEnabled
 import com.restaurant.management.ui.util.modulesToJson
+import com.restaurant.management.ui.util.multilineToPipeList
 import com.restaurant.management.ui.util.parseModulesJson
+import com.restaurant.management.ui.util.pipeListToMultiline
 import com.restaurant.management.ui.util.launchSubscriptionUpiPayment
 import com.restaurant.management.ui.util.resolvedExpenseCategories
 import com.restaurant.management.ui.util.subscriptionBillingUpiVpa
@@ -458,7 +460,7 @@ object AdminScreens {
             Triple("Expenses", "Track operating costs and running total", Destinations.EXPENSES),
             Triple("Staff", "Salaries, absent days & roster", Destinations.STAFF),
             Triple("Reports", "Revenue, expenses, salaries & net profit", Destinations.REPORTS),
-            Triple("Global settings", "Modules, tax & venue name", Destinations.SETTINGS),
+            Triple("Global settings", "Venue, tax, menu categories & modules", Destinations.SETTINGS),
         )
 
     @Composable
@@ -2533,9 +2535,6 @@ object AdminScreens {
     @Composable
     fun Orders(vm: RestaurantViewModel) {
         val rows by vm.reportRows.collectAsState()
-        val orderDetail by vm.reportOrderDetail.collectAsState()
-        val orderItemEditor by vm.orderItemEditor.collectAsState()
-        val menu by vm.menu.collectAsState()
         val orderHistoryContext = LocalContext.current
         var orderIdActionRow by remember { mutableStateOf<RestaurantRepository.ReportRow?>(null) }
         var orderDeleteConfirmRow by remember { mutableStateOf<RestaurantRepository.ReportRow?>(null) }
@@ -2735,6 +2734,16 @@ object AdminScreens {
                 },
             )
         }
+        }
+    }
+
+    /** Order detail + line-item editor dialogs (Kitchen, Order history, anywhere). */
+    @Composable
+    fun GlobalOrderDialogs(vm: RestaurantViewModel) {
+        val orderDetail by vm.reportOrderDetail.collectAsState()
+        val orderItemEditor by vm.orderItemEditor.collectAsState()
+        val menu by vm.menu.collectAsState()
+        val ctx = LocalContext.current
 
         orderItemEditor?.let { ed ->
             val lineScroll = rememberScrollState()
@@ -2954,7 +2963,7 @@ object AdminScreens {
                             )
                             Button(
                                 onClick = {
-                                    vm.printOrderBill(orderHistoryContext, d.orderId)
+                                    vm.printOrderBill(ctx, d.orderId)
                                 },
                             ) {
                                 Text("Print bill")
@@ -2974,7 +2983,6 @@ object AdminScreens {
                     }
                 },
             )
-        }
         }
     }
 
@@ -3073,12 +3081,16 @@ object AdminScreens {
         var venue by remember(s?.venueName) { mutableStateOf(s?.venueName ?: "") }
         var tax by remember(s?.taxPercent) { mutableStateOf(s?.taxPercent?.toString() ?: "5") }
         var svc by remember(s?.serviceChargePercent) { mutableStateOf(s?.serviceChargePercent?.toString() ?: "0") }
+        var menuCategoriesMl by remember(s?.menuCategories) {
+            mutableStateOf(pipeListToMultiline(s?.menuCategories))
+        }
         var modules by remember(s?.modulesJson) { mutableStateOf(parseModulesJson(s?.modulesJson)) }
 
         LaunchedEffect(s) {
             venue = s?.venueName ?: ""
             tax = s?.taxPercent?.toString() ?: "5"
             svc = s?.serviceChargePercent?.toString() ?: "0"
+            menuCategoriesMl = pipeListToMultiline(s?.menuCategories)
             modules = parseModulesJson(s?.modulesJson)
         }
 
@@ -3094,7 +3106,7 @@ object AdminScreens {
         ) {
             ScreenHeader(
                 title = "Global settings",
-                subtitle = "Venue, tax & modules",
+                subtitle = "Venue, tax, menu categories & modules",
                 accent = HeaderAccent.Tertiary,
                 decorationResId = R.drawable.decor_plate_meal,
             )
@@ -3112,7 +3124,7 @@ object AdminScreens {
                             taxPercent = t,
                             serviceChargePercent = sc,
                             qrMenuToken = s?.qrMenuToken ?: "",
-                            menuCategories = s?.menuCategories ?: "",
+                            menuCategories = multilineToPipeList(menuCategoriesMl),
                             expenseCategories = s?.expenseCategories ?: "",
                             modulesJson = modulesToJson(modules),
                         ),
@@ -3136,6 +3148,24 @@ object AdminScreens {
                     onValueChange = { svc = it },
                     label = { Text("Service charge %") },
                     modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = menuCategoriesMl,
+                    onValueChange = { menuCategoriesMl = it },
+                    label = { Text("Menu categories") },
+                    supportingText = {
+                        Text(
+                            "One category per line. Leave empty to use defaults (Starters, Mains, Desserts, Drinks). " +
+                                "These appear when you add or edit menu items.",
+                        )
+                    },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp)
+                            .heightIn(min = 120.dp),
+                    minLines = 4,
+                    maxLines = 10,
                 )
                 HorizontalDivider(
                     Modifier.padding(vertical = 16.dp),

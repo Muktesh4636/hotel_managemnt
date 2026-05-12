@@ -44,7 +44,11 @@ class BackendGateway(
         syncPull()
     }
 
-    suspend fun placeCustomerMenuOrder(cart: Map<Long, Int>) {
+    /**
+     * Creates a QR guest ticket on the server. Returns the server order id when the API
+     * response includes it (DRF returns `id` on create).
+     */
+    suspend fun placeCustomerMenuOrder(cart: Map<Long, Int>): Long? {
         val lines = JSONArray()
         for ((menuItemId, qty) in cart) {
             if (qty <= 0) continue
@@ -59,8 +63,15 @@ class BackendGateway(
                 .put("lines", lines)
                 .put("status", OrderStatus.IN_KITCHEN)
                 .put("notes", "QR menu")
-        client.post("/api/v1/orders/", root.toString())
+        val body = client.post("/api/v1/orders/", root.toString())
+        val serverId =
+            runCatching {
+                val o = JSONObject(body)
+                val id = o.optLong("id", -1L)
+                if (id > 0L) id else null
+            }.getOrNull()
         syncPull()
+        return serverId
     }
 
     suspend fun sendOrderToKitchen(orderId: Long) {
@@ -129,6 +140,36 @@ class BackendGateway(
             )
             syncPull()
         }
+    }
+
+    suspend fun createOrderLine(
+        orderId: Long,
+        menuItemId: Long,
+        quantity: Int,
+    ) {
+        val body =
+            JSONObject()
+                .put("order_id", orderId)
+                .put("menu_item_id", menuItemId)
+                .put("quantity", quantity)
+        client.post("/api/v1/order-lines/", body.toString())
+        syncPull()
+    }
+
+    suspend fun patchOrderLineQuantity(
+        lineId: Long,
+        quantity: Int,
+    ) {
+        client.patch(
+            "/api/v1/order-lines/$lineId/",
+            JSONObject().put("quantity", quantity).toString(),
+        )
+        syncPull()
+    }
+
+    suspend fun deleteOrderLine(lineId: Long) {
+        client.delete("/api/v1/order-lines/$lineId/")
+        syncPull()
     }
 
     suspend fun markOrderServed(orderId: Long) {

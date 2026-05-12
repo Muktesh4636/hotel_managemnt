@@ -12,7 +12,42 @@
     header { padding:16px 18px; background:linear-gradient(135deg,#c2543d22,#3d6b5822); border-bottom:1px solid var(--line); }
     h1 { margin:0; font-size:1.35rem; }
     .sub { margin:6px 0 0; font-size:0.85rem; color:var(--muted); }
-    main { padding:14px 16px 120px; max-width:520px; margin:0 auto; }
+    main { padding:14px 16px 140px; max-width:520px; margin:0 auto; }
+    .cat-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      margin: -6px -16px 14px;
+      padding: 10px 0 12px;
+      background: linear-gradient(to bottom, var(--bg) 70%, transparent);
+    }
+    .cat-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x proximity;
+      padding: 0 16px 4px;
+      touch-action: pan-x;
+    }
+    .cat-strip::-webkit-scrollbar { height: 4px; }
+    .cat-strip::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+    .chip {
+      flex-shrink: 0;
+      scroll-snap-align: start;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      font: inherit;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--ink);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
     .cat { font-size:0.95rem; font-weight:700; color:var(--accent); margin:18px 0 8px; }
     .dish { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--card); border-radius:12px; border:1px solid var(--line); margin-bottom:8px; }
     .dish img { width:48px; height:48px; border-radius:10px; object-fit:cover; flex-shrink:0; background:#eee; }
@@ -21,9 +56,23 @@
     .dish .price { font-size:0.8rem; color:var(--muted); }
     .qty { display:flex; align-items:center; gap:6px; }
     .qty button { width:34px; height:34px; border-radius:10px; border:1px solid var(--line); background:#fff; font-size:1.1rem; cursor:pointer; }
-    .dock { position:fixed; left:0; right:0; bottom:0; padding:14px 16px 18px; background:rgba(255,255,255,.96); border-top:1px solid var(--line); box-shadow:0 -4px 20px rgba(0,0,0,.06); }
+    .dock { position:fixed; left:0; right:0; bottom:0; padding:14px 16px calc(18px + env(safe-area-inset-bottom,0)); background:rgba(255,255,255,.96); border-top:1px solid var(--line); box-shadow:0 -4px 20px rgba(0,0,0,.06); }
     .dock .inner { max-width:520px; margin:0 auto; display:flex; flex-direction:column; gap:10px; }
+    .dock-summary-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 12px; }
+    .dock-summary-row .btn-summary { border:none; background:transparent; color:var(--accent); font-weight:700; font-size:0.9rem; padding:6px 4px; cursor:pointer; font-family:inherit; text-decoration:underline; text-underline-offset:3px; }
+    .dock-summary-row .btn-summary:disabled { opacity:0.4; cursor:not-allowed; text-decoration:none; }
     .total { font-weight:700; font-size:1.05rem; }
+    .modal-backdrop { display:none; position:fixed; inset:0; background:rgba(28,25,23,.45); z-index:50; align-items:center; justify-content:center; padding:20px; }
+    .modal-backdrop.open { display:flex; }
+    .modal { background:var(--card); border-radius:16px; max-width:400px; width:100%; max-height:80vh; overflow:hidden; display:flex; flex-direction:column; border:1px solid var(--line); box-shadow:0 12px 40px rgba(0,0,0,.12); }
+    .modal-h { padding:16px 18px 12px; border-bottom:1px solid var(--line); }
+    .modal-h h2 { margin:0; font-size:1.05rem; }
+    .modal-body { padding:14px 18px; overflow-y:auto; flex:1; }
+    .modal-actions { padding:12px 16px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; }
+    .btn-modal-close { border:none; background:transparent; color:var(--accent); font-weight:700; padding:10px 14px; cursor:pointer; font-family:inherit; }
+    .sum-line { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); font-size:0.9rem; }
+    .sum-line span:first-child { min-width:0; flex:1; }
+    .sum-total { display:flex; justify-content:space-between; margin-top:12px; font-weight:700; }
     .btn-primary { background:var(--accent); color:#fff; border:none; padding:12px 16px; border-radius:12px; font-size:1rem; font-weight:600; cursor:pointer; }
     .btn-primary:disabled { opacity:.45; cursor:not-allowed; }
     .btn-ghost { background:transparent; border:1px solid var(--line); padding:10px 14px; border-radius:12px; cursor:pointer; }
@@ -37,9 +86,19 @@
     <p class="sub">Order from your table — the kitchen sees your ticket on their screen.</p>
   </header>
   <main id="main"></main>
+  <div class="modal-backdrop" id="guestSummaryBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="guestSummaryTitle">
+      <div class="modal-h"><h2 id="guestSummaryTitle">Order summary</h2></div>
+      <div class="modal-body" id="guestSummaryBody"></div>
+      <div class="modal-actions"><button type="button" class="btn-modal-close" id="guestSummaryClose">Close</button></div>
+    </div>
+  </div>
   <div class="dock">
     <div class="inner">
-      <div class="total" id="totalLine">Total: ₹0</div>
+      <div class="dock-summary-row">
+        <div class="total" id="totalLine">Total: ₹0</div>
+        <button type="button" class="btn-summary" id="btnGuestSummary" disabled>Order summary</button>
+      </div>
       <div style="display:flex; gap:10px;">
         <button type="button" class="btn-primary" id="btnPlace" disabled>Place order</button>
         <button type="button" class="btn-ghost" id="btnClear">Clear</button>
@@ -57,6 +116,8 @@
   var cart = {};
   var menuCache = [];
   var venueName = 'Menu';
+  /** null = show all categories; string = one category only */
+  var guestSelectedCat = null;
   function money(c){ return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format((c||0)/100); }
   function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
   function imgUrl(m){
@@ -71,10 +132,37 @@
       if (!by[c]) by[c] = [];
       by[c].push(m);
     });
+    var sortedCats = Object.keys(by).sort();
+    if (guestSelectedCat != null && sortedCats.indexOf(guestSelectedCat) < 0) guestSelectedCat = null;
+
+    var chipWrap = '<div class="cat-wrap"><div class="cat-strip" id="catStrip" role="tablist" aria-label="Menu categories">';
+    chipWrap += '<button type="button" class="chip'+(guestSelectedCat===null?' on':'')+'" data-cat="" role="tab" aria-selected="'+(guestSelectedCat===null?'true':'false')+'">All</button>';
+    sortedCats.forEach(function(c){
+      var on = guestSelectedCat === c;
+      chipWrap += '<button type="button" class="chip'+(on?' on':'')+'" data-cat="'+esc(c)+'" role="tab" aria-selected="'+(on?'true':'false')+'">'+esc(c)+'</button>';
+    });
+    chipWrap += '</div></div>';
+
     var html = '';
-    Object.keys(by).sort().forEach(function(cat){
-      html += '<div class="cat">'+esc(cat)+'</div>';
-      by[cat].forEach(function(m){
+    if (guestSelectedCat === null) {
+      sortedCats.forEach(function(cat){
+        html += '<div class="cat">'+esc(cat)+'</div>';
+        by[cat].forEach(function(m){
+          var q = cart[m.id]||0;
+          var src = esc(imgUrl(m));
+          html += '<div class="dish" data-id="'+m.id+'">'+
+            '<img src="'+src+'" alt="" loading="lazy" decoding="async"/>'+
+            '<div class="meta"><div class="name">'+esc(m.name)+'</div><div class="price">'+money(m.price)+'</div></div>'+
+            '<div class="qty">'+
+            '<button type="button" data-d="-1" data-id="'+m.id+'" aria-label="Decrease">−</button>'+
+            '<span>'+q+'</span>'+
+            '<button type="button" data-d="1" data-id="'+m.id+'" aria-label="Increase">+</button>'+
+            '</div></div>';
+        });
+      });
+    } else {
+      html += '<div class="cat">'+esc(guestSelectedCat)+'</div>';
+      (by[guestSelectedCat]||[]).forEach(function(m){
         var q = cart[m.id]||0;
         var src = esc(imgUrl(m));
         html += '<div class="dish" data-id="'+m.id+'">'+
@@ -86,8 +174,21 @@
           '<button type="button" data-d="1" data-id="'+m.id+'" aria-label="Increase">+</button>'+
           '</div></div>';
       });
+    }
+    var bodyBelow;
+    if (!sortedCats.length) {
+      bodyBelow = '<p class="hint">No dishes available right now.</p>';
+    } else {
+      bodyBelow = html || '<p class="hint">No dishes in this category.</p>';
+    }
+    document.getElementById('main').innerHTML = chipWrap + bodyBelow;
+    document.getElementById('catStrip').querySelectorAll('.chip').forEach(function(b){
+      b.onclick = function(){
+        var raw = b.getAttribute('data-cat');
+        guestSelectedCat = raw === '' || raw == null ? null : raw;
+        render(menuCache);
+      };
     });
-    document.getElementById('main').innerHTML = html || '<p class="hint">No dishes available right now.</p>';
     wireRows(menu);
     updateTotal(menu);
   }
@@ -118,6 +219,36 @@
     document.getElementById('totalLine').textContent = 'Total: ' + money(t);
     var has = Object.keys(cart).some(function(k){ return (cart[+k]||0) > 0; });
     document.getElementById('btnPlace').disabled = !has;
+    var sb = document.getElementById('btnGuestSummary');
+    if (sb) sb.disabled = !has;
+  }
+  function openGuestOrderSummary(){
+    var map = {};
+    (menuCache||[]).forEach(function(m){ map[m.id]=m; });
+    var ids = Object.keys(cart).filter(function(k){ return (cart[+k]||0) > 0; });
+    if (!ids.length) return;
+    var rows = '';
+    var t = 0;
+    ids.map(function(k){ return +k; }).sort(function(a,b){
+      var na = (map[a]||{}).name || '';
+      var nb = (map[b]||{}).name || '';
+      return na.localeCompare(nb);
+    }).forEach(function(id){
+      var m = map[id];
+      var q = cart[id]||0;
+      var nm = m ? m.name : ('Item #' + id);
+      var unit = m ? m.price : 0;
+      var line = unit * q;
+      t += line;
+      rows += '<div class="sum-line"><span>'+esc(q)+'× '+esc(nm)+'</span><span>'+money(line)+'</span></div>';
+    });
+    document.getElementById('guestSummaryBody').innerHTML = rows + '<div class="sum-total"><span>Total</span><span>'+money(t)+'</span></div>';
+    document.getElementById('guestSummaryBackdrop').classList.add('open');
+    document.getElementById('guestSummaryBackdrop').setAttribute('aria-hidden','false');
+  }
+  function closeGuestOrderSummary(){
+    document.getElementById('guestSummaryBackdrop').classList.remove('open');
+    document.getElementById('guestSummaryBackdrop').setAttribute('aria-hidden','true');
   }
   fetch('/api/v1/guest/menu/?token=' + encodeURIComponent(TOKEN))
     .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
@@ -133,6 +264,13 @@
     .catch(function(){ document.getElementById('main').innerHTML = '<p class="err">Network error loading menu.</p>'; });
 
   document.getElementById('btnClear').onclick = function(){ cart = {}; render(menuCache); };
+  var btnGs = document.getElementById('btnGuestSummary');
+  if (btnGs) btnGs.onclick = openGuestOrderSummary;
+  document.getElementById('guestSummaryClose').onclick = closeGuestOrderSummary;
+  document.getElementById('guestSummaryBackdrop').onclick = function(e){
+    if (e.target === document.getElementById('guestSummaryBackdrop')) closeGuestOrderSummary();
+  };
+
   document.getElementById('btnPlace').onclick = function(){
     var lines = [];
     Object.keys(cart).forEach(function(k){
@@ -150,7 +288,10 @@
       return r.json().then(function(j){ return {ok:r.ok, j:j}; });
     }).then(function(x){
       if (x.ok) {
-        msg.textContent = 'Order placed! The kitchen has been notified.';
+        var oid = (x.j && x.j.order_id != null) ? String(x.j.order_id) : '';
+        msg.textContent = oid
+          ? ('Order #' + oid + ' placed! The kitchen has been notified.')
+          : ('Order placed! The kitchen has been notified.');
         cart = {};
         render(menuCache);
       } else {

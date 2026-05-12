@@ -1,5 +1,6 @@
 package com.restaurant.management.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -69,6 +70,21 @@ private val moreRoutes =
         Destinations.QR_MENU,
     )
 
+/**
+ * Bottom tabs share one pattern so the back stack never mixes Operations deep-links with
+ * Home/POS/Kitchen in a way that drops taps (see Navigation "Bottom navigation" guidance).
+ */
+private fun NavController.navigateToBottomTab(route: String) {
+    navigate(route) {
+        // Pop to Home route (string) so back stack matches top-level tabs; graph id can desync selection on some devices.
+        popUpTo(Destinations.DASHBOARD) {
+            saveState = true
+        }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
+
 @Composable
 fun RestaurantRoot(vm: RestaurantViewModel) {
     val navController = rememberNavController()
@@ -104,11 +120,12 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ) {
                 bottomTabs.forEach { tab ->
+                    // Use leaf route (not hierarchy) — Navigation 2.8+ can leave parent routes on hierarchy so POS never "matches".
                     val selected =
                         if (tab.route == Destinations.MORE) {
-                            currentRoute in moreRoutes
+                            currentRoute != null && currentRoute in moreRoutes
                         } else {
-                            navBackStackEntry?.destination?.hierarchy?.any { it.route == tab.route } == true
+                            currentRoute == tab.route
                         }
                     NavigationBarItem(
                         icon = { Icon(tab.icon, contentDescription = tab.label) },
@@ -123,46 +140,19 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
                                 unselectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                             ),
                         onClick = {
-                            when (tab.route) {
-                                Destinations.MORE -> {
-                                    // Always return to the Operations hub when tapping More again
-                                    // (clears Customer QR, Reports, Settings, etc. stacked above it).
-                                    navController.navigate(Destinations.MORE) {
-                                        popUpTo(Destinations.MORE) { inclusive = true }
-                                        launchSingleTop = true
-                                    }
-                                }
-                                Destinations.DASHBOARD -> {
-                                    // Popping to start is reliable from deep Operations routes (Menu, Settings, …).
-                                    // navigate(DASHBOARD) + popUpTo(DASHBOARD) can fail to clear the stack in some cases.
-                                    if (!navController.popBackStack(Destinations.DASHBOARD, inclusive = false)) {
-                                        navController.navigate(Destinations.DASHBOARD) {
-                                            launchSingleTop = true
-                                        }
-                                    }
-                                }
-                                else -> {
-                                    navController.navigate(tab.route) {
-                                        popUpTo(Destinations.DASHBOARD) {
-                                            inclusive = false
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                }
-                            }
+                            navController.navigateToBottomTab(tab.route)
                         },
                     )
                 }
             }
         },
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Destinations.DASHBOARD,
-            modifier = Modifier.padding(innerPadding),
-        ) {
+        Box(Modifier.fillMaxSize().padding(innerPadding)) {
+            NavHost(
+                navController = navController,
+                startDestination = Destinations.DASHBOARD,
+                modifier = Modifier.fillMaxSize(),
+            ) {
             composable(Destinations.DASHBOARD) {
                 CoreScreens.Dashboard(vm)
             }
@@ -206,6 +196,8 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
             composable(Destinations.QR_MENU) {
                 QrMenuScreen(vm)
             }
+        }
+            AdminScreens.GlobalOrderDialogs(vm)
         }
     }
 }

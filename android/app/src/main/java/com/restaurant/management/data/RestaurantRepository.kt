@@ -192,26 +192,27 @@ class RestaurantRepository(
         }
     }
 
-    /** Guest orders from QR menu go straight to the kitchen queue. */
-    suspend fun placeCustomerMenuOrder(cart: Map<Long, Int>) {
-        if (cart.isEmpty()) return
+    /**
+     * Guest orders from QR menu go straight to the kitchen queue.
+     * Returns the server order id when posted online, or the local id when offline / fallback.
+     */
+    suspend fun placeCustomerMenuOrder(cart: Map<Long, Int>): Long? {
+        if (cart.isEmpty()) return null
         val filtered =
             cart.filter { (menuItemId, qty) ->
                 qty > 0 && (menu.getById(menuItemId)?.isAvailable == true)
             }
-        if (filtered.isEmpty()) return
+        if (filtered.isEmpty()) return null
         val remote = remoteGateway()
         if (remote != null) {
-            val remoteOk =
-                runCatching {
-                    remote.placeCustomerMenuOrder(filtered)
-                    true
-                }.getOrElse { e ->
-                    if (isNetworkFailure(e)) false else throw e
-                }
-            if (remoteOk) return
+            val outcome = runCatching { remote.placeCustomerMenuOrder(filtered) }
+            if (outcome.isSuccess) {
+                return outcome.getOrNull()
+            }
+            val e = outcome.exceptionOrNull() ?: error("placeCustomerMenuOrder: empty failure")
+            if (!isNetworkFailure(e)) throw e
         }
-        db.withTransaction {
+        return db.withTransaction {
             val created =
                 OrderEntity(
                     tableId = null,
@@ -237,8 +238,9 @@ class RestaurantRepository(
                     ),
                 )
             }
-            val saved = orders.getOrder(orderId) ?: return@withTransaction
+            val saved = orders.getOrder(orderId) ?: return@withTransaction orderId
             orders.updateOrder(saved.copy(totalCents = total))
+            orderId
         }
     }
 
@@ -393,7 +395,7 @@ class RestaurantRepository(
         orders.updateOrder(o.copy(totalCents = total))
     }
 
-    /** Add qty to an existing line for the same menu item, or insert a new line (local DB only). */
+    /** Add qty to an existing line for the same menu item, or insert a new line. */
     suspend fun addOrIncrementOrderLine(
         orderId: Long,
         menuItemId: Long,
@@ -401,7 +403,26 @@ class RestaurantRepository(
     ) {
         if (addQty <= 0) return
         val remote = remoteGateway()
-        if (remote != null) return
+        if (remote != null) {
+            val ok =
+                runCatching {
+                    val order = orders.getOrder(orderId) ?: return@runCatching false
+                    if (order.status == OrderStatus.CANCELLED) return@runCatching false
+                    val item = menu.getById(menuItemId) ?: return@runCatching false
+                    if (!item.isAvailable) return@runCatching false
+                    val lines = orders.getLinesForOrder(orderId)
+                    val existing = lines.firstOrNull { it.menuItemId == menuItemId }
+                    if (existing != null) {
+                        remote.patchOrderLineQuantity(existing.id, existing.quantity + addQty)
+                    } else {
+                        remote.createOrderLine(orderId, menuItemId, addQty)
+                    }
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (ok) return
+        }
         db.withTransaction {
             val order = orders.getOrder(orderId) ?: return@withTransaction
             if (order.status == OrderStatus.CANCELLED) return@withTransaction
@@ -433,7 +454,24 @@ class RestaurantRepository(
         newQuantity: Int,
     ) {
         val remote = remoteGateway()
-        if (remote != null) return
+        if (remote != null) {
+            val ok =
+                runCatching {
+                    val order = orders.getOrder(orderId) ?: return@runCatching false
+                    if (order.status == OrderStatus.CANCELLED) return@runCatching false
+                    val line = orders.getLine(lineId) ?: return@runCatching false
+                    if (line.orderId != orderId) return@runCatching false
+                    if (newQuantity <= 0) {
+                        remote.deleteOrderLine(lineId)
+                    } else {
+                        remote.patchOrderLineQuantity(lineId, newQuantity)
+                    }
+                    true
+                }.getOrElse { e ->
+                    if (isNetworkFailure(e)) false else throw e
+                }
+            if (ok) return
+        }
         db.withTransaction {
             val order = orders.getOrder(orderId) ?: return@withTransaction
             if (order.status == OrderStatus.CANCELLED) return@withTransaction

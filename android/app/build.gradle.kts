@@ -13,8 +13,10 @@ android {
         applicationId = "com.restaurant.management"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.4"
+        // Launcher + recents title (merged into APK; avoids stale incremental merges skipping values/strings.xml).
+        resValue("string", "app_name", "Pimux")
         // All `/api/v1/...` calls use https://pimux.store when no other base URL is saved in the app.
         buildConfigField("String", "API_DEFAULT_BASE_URL", "\"https://pimux.store\"")
     }

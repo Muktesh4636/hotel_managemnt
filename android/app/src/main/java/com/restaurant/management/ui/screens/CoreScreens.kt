@@ -1,9 +1,15 @@
 package com.restaurant.management.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +26,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.items as lazyRowItems
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,12 +36,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -44,7 +54,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.restaurant.management.R
+import com.restaurant.management.data.local.OrderWithLines
 import com.restaurant.management.data.local.entity.MenuItemEntity
+import com.restaurant.management.data.local.entity.isQrDirectKitchenOrder
 import com.restaurant.management.model.OrderStatus
 import com.restaurant.management.model.orderStatusLabel
 import com.restaurant.management.ui.RestaurantViewModel
@@ -217,6 +229,13 @@ object CoreScreens {
                 }
             }
 
+        val posActiveOrders =
+            remember(openOrders) {
+                openOrders.filterNot { it.order.isQrDirectKitchenOrder() }
+            }
+
+        var showOrderSummary by remember { mutableStateOf(false) }
+
         Column(
             modifier =
                 Modifier
@@ -335,8 +354,8 @@ object CoreScreens {
                     }
                 }
             }
-            // Recent tickets (above checkout — stays visible when scrolling menu ends)
-            if (openOrders.isNotEmpty()) {
+            // Counter / table tickets only — QR guest tickets stay on Kitchen (same data, filtered here).
+            if (posActiveOrders.isNotEmpty()) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(
@@ -349,7 +368,7 @@ object CoreScreens {
                         modifier = Modifier.height(200.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        lazyItems(openOrders, key = { it.order.id }) { ow ->
+                        lazyItems(posActiveOrders, key = { it.order.id }) { ow ->
                             OrderActionsCard(ow.order.id, ow.order.status, ow.order.totalCents, vm)
                         }
                     }
@@ -363,12 +382,27 @@ object CoreScreens {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Text(
-                        "Cart total: ${formatCents(cartTotal)}",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
-                    )
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp, bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Cart total: ${formatCents(cartTotal)}",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(
+                            onClick = { showOrderSummary = true },
+                            enabled = cart.values.any { it > 0 },
+                        ) {
+                            Text("Order summary")
+                        }
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
@@ -385,6 +419,70 @@ object CoreScreens {
                     }
                 }
             }
+        }
+
+        if (showOrderSummary) {
+            val scroll = rememberScrollState()
+            val priceById = remember(posMenu) { posMenu.associate { it.id to it.priceCents } }
+            val nameById = remember(posMenu) { posMenu.associate { it.id to it.name } }
+            AlertDialog(
+                onDismissRequest = { showOrderSummary = false },
+                title = {
+                    Text(
+                        "Order summary",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+                text = {
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(scroll),
+                    ) {
+                        cart.entries
+                            .filter { it.value > 0 }
+                            .sortedBy { nameById[it.key] ?: "" }
+                            .forEach { (id, qty) ->
+                                val name = nameById[id] ?: "Item #$id"
+                                val unit = priceById[id] ?: 0
+                                val line = unit * qty
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Text(
+                                        "${qty}× $name",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Text(
+                                        formatCents(line),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
+                            }
+                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("Total", fontWeight = FontWeight.Bold)
+                            Text(formatCents(cartTotal), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showOrderSummary = false }) {
+                        Text("Close")
+                    }
+                },
+            )
         }
     }
 
@@ -469,12 +567,18 @@ object CoreScreens {
         }
     }
 
+    @OptIn(ExperimentalFoundationApi::class)
     @Composable
     fun Kitchen(vm: RestaurantViewModel) {
         val orders by vm.openOrders.collectAsState()
         val menu by vm.menu.collectAsState()
+        val tables by vm.tables.collectAsState()
         val menuMap = remember(menu) { menu.associateBy { it.id } }
         val kitchenCtx = LocalContext.current.applicationContext
+        val toastCtx = LocalContext.current
+        var kitchenActionMenu by remember { mutableStateOf<OrderWithLines?>(null) }
+        var kitchenCancelConfirmId by remember { mutableStateOf<Long?>(null) }
+
         LaunchedEffect(Unit) {
             while (true) {
                 delay(12_000)
@@ -482,79 +586,171 @@ object CoreScreens {
             }
         }
 
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-        ) {
-            ScreenHeader(
-                title = "Kitchen",
-                subtitle = "Tap a line to bump status",
-                accent = HeaderAccent.Tertiary,
-                decorationResId = R.drawable.decor_kitchen_pot,
+        kitchenActionMenu?.let { ow ->
+            AlertDialog(
+                onDismissRequest = { kitchenActionMenu = null },
+                title = { Text("Order #${ow.order.id}") },
+                text = {
+                    Column(Modifier.fillMaxWidth()) {
+                        TextButton(
+                            onClick = {
+                                vm.openReportOrder(ow.order.id)
+                                kitchenActionMenu = null
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("View line items")
+                        }
+                        TextButton(
+                            onClick = {
+                                vm.openOrderItemEditor(ow.order.id) { msg ->
+                                    Toast.makeText(toastCtx, msg, Toast.LENGTH_LONG).show()
+                                }
+                                kitchenActionMenu = null
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Edit order")
+                        }
+                        TextButton(
+                            onClick = {
+                                kitchenCancelConfirmId = ow.order.id
+                                kitchenActionMenu = null
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Cancel order")
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { kitchenActionMenu = null }) {
+                        Text("Close")
+                    }
+                },
             )
-            LazyColumn(
+        }
+
+        kitchenCancelConfirmId?.let { oid ->
+            AlertDialog(
+                onDismissRequest = { kitchenCancelConfirmId = null },
+                title = { Text("Cancel this order?") },
+                text = {
+                    Text(
+                        "Order #$oid will leave the kitchen queue and be marked cancelled.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            vm.cancel(oid)
+                            kitchenCancelConfirmId = null
+                        },
+                    ) {
+                        Text("Cancel order")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { kitchenCancelConfirmId = null }) {
+                        Text("Back")
+                    }
+                },
+            )
+        }
+
+        Box(Modifier.fillMaxSize()) {
+            Column(
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
             ) {
-                lazyItems(
-                    orders.filter {
-                        it.order.status != OrderStatus.PAID && it.order.status != OrderStatus.CANCELLED
-                    },
-                    key = { it.order.id },
-                ) { ow ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                    ) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(
-                                "Order ID: ${ow.order.id} · ${orderStatusLabel(ow.order.status)}",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            )
-                            ow.lines.forEach { line ->
-                                val name = menuMap[line.menuItemId]?.name ?: "Item #${line.menuItemId}"
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp)
-                                        .clickable { vm.advanceLine(line.id) },
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        KitchenLineBadge(
-                                            itemName = name,
-                                            category = menuMap[line.menuItemId]?.category,
-                                            menuItemId = line.menuItemId,
-                                            customPhotoPath = menuMap[line.menuItemId]?.customPhotoPath,
-                                        )
-                                        Spacer(Modifier.width(10.dp))
-                                        Text(
-                                            "${line.quantity}× $name",
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        )
-                                    }
-                                    Surface(color = MaterialTheme.colorScheme.tertiaryContainer) {
-                                        Text(
-                                            labelKitchen(line.kitchenStatus),
-                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        )
+                ScreenHeader(
+                    title = "Kitchen",
+                    subtitle = "Tap order title for summary · long-press for actions · tap a line to bump status",
+                    accent = HeaderAccent.Tertiary,
+                    decorationResId = R.drawable.decor_kitchen_pot,
+                )
+                LazyColumn(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    lazyItems(
+                        orders.filter {
+                            it.order.status != OrderStatus.PAID && it.order.status != OrderStatus.CANCELLED
+                        },
+                        key = { it.order.id },
+                    ) { ow ->
+                        val tableLabel =
+                            remember(ow.order.tableId, tables) {
+                                ow.order.tableId?.let { tid ->
+                                    tables.find { it.id == tid }?.label
+                                } ?: "—"
+                            }
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                ),
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(
+                                    "Order ID: ${ow.order.id} · ${orderStatusLabel(ow.order.status)} · Table $tableLabel",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .combinedClickable(
+                                                onClick = { vm.openReportOrder(ow.order.id) },
+                                                onLongClick = { kitchenActionMenu = ow },
+                                                onLongClickLabel = "Order actions",
+                                            ),
+                                )
+                                ow.lines.forEach { line ->
+                                    val name = menuMap[line.menuItemId]?.name ?: "Item #${line.menuItemId}"
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp)
+                                            .clickable { vm.advanceLine(line.id) },
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            KitchenLineBadge(
+                                                itemName = name,
+                                                category = menuMap[line.menuItemId]?.category,
+                                                menuItemId = line.menuItemId,
+                                                customPhotoPath = menuMap[line.menuItemId]?.customPhotoPath,
+                                            )
+                                            Spacer(Modifier.width(10.dp))
+                                            Text(
+                                                "${line.quantity}× $name",
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            )
+                                        }
+                                        Surface(color = MaterialTheme.colorScheme.tertiaryContainer) {
+                                            Text(
+                                                labelKitchen(line.kitchenStatus),
+                                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            )
+                                        }
                                     }
                                 }
+                                Text(
+                                    "Tap a line to advance: Queued → Cooking → Ready",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
+                                    modifier = Modifier.padding(top = 6.dp),
+                                )
                             }
-                            Text(
-                                "Tap a line to advance: Queued → Cooking → Ready",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
-                                modifier = Modifier.padding(top = 6.dp),
-                            )
                         }
                     }
                 }

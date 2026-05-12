@@ -24,7 +24,9 @@ from .serializers import (
     ExpenseSerializer,
     InventoryItemSerializer,
     MenuItemSerializer,
+    OrderLineCreateSerializer,
     OrderLinePatchSerializer,
+    OrderLineReadSerializer,
     StaffAbsenceSerializer,
     StaffMemberSerializer,
     VenueOrderPatchSerializer,
@@ -101,13 +103,44 @@ class VenueOrderViewSet(OwnerScopedViewSet):
         serializer.save()
 
 
+def _recompute_venue_order_total(order: VenueOrder) -> None:
+    total = sum(ln.quantity * ln.unit_price_cents for ln in order.lines.all())
+    if order.total_cents != total:
+        order.total_cents = total
+        order.save(update_fields=["total_cents"])
+
+
 class OrderLineViewSet(viewsets.ModelViewSet):
+    """List/read lines; PATCH status/quantity; POST to add a line; DELETE to remove."""
+
     permission_classes = [IsAuthenticated]
-    serializer_class = OrderLinePatchSerializer
-    http_method_names = ["get", "patch", "head", "options"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
         return OrderLine.objects.filter(order__owner=self.request.user)
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return OrderLineCreateSerializer
+        if self.action in ("update", "partial_update"):
+            return OrderLinePatchSerializer
+        return OrderLineReadSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = OrderLineCreateSerializer(data=request.data, context=self.get_serializer_context())
+        serializer.is_valid(raise_exception=True)
+        line = serializer.save()
+        _recompute_venue_order_total(line.order)
+        return Response(OrderLineReadSerializer(line).data, status=status.HTTP_201_CREATED)
+
+    def perform_update(self, serializer):
+        super().perform_update(serializer)
+        _recompute_venue_order_total(serializer.instance.order)
+
+    def perform_destroy(self, instance):
+        order = instance.order
+        super().perform_destroy(instance)
+        _recompute_venue_order_total(order)
 
 
 class InventoryItemViewSet(OwnerScopedViewSet):

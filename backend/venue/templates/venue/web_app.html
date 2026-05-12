@@ -871,6 +871,32 @@
       border: 1px solid var(--outline-variant);
       box-shadow: var(--shadow-md);
     }
+    .dock-cart-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      margin-bottom: 4px;
+    }
+    .dock-cart-row strong { font-size: 1rem; }
+    .dock-cart-row .btn-text:disabled { opacity: 0.45; cursor: not-allowed; }
+    .pos-summary-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--outline-variant);
+      font-size: 0.9375rem;
+    }
+    .pos-summary-line span:first-child { min-width: 0; flex: 1; }
+    .pos-summary-total {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 12px;
+      font-weight: 700;
+      font-size: 1rem;
+    }
     .row-btns { display: flex; gap: 10px; margin-top: 12px; }
     .row-btns .btn { flex: 1; }
     .btn-outline { background: var(--surface); border: 1px solid var(--outline); color: var(--ink); }
@@ -996,7 +1022,7 @@
               <div class="sidebar-ops-list" id="sidebar-ops-list"></div>
             </div>
           </div>
-          <a href="/download/android-app/" class="sidebar-download" id="sidebarDownloadApk" role="button" aria-label="Download Android app APK">
+          <a href="/download/android-app/?v={{ apk_cache_bust }}" class="sidebar-download" id="sidebarDownloadApk" role="button" aria-label="Download Android app APK">
             <svg fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
             <span class="nav-label">Download Android app</span>
           </a>
@@ -1062,7 +1088,10 @@
             <div id="pos-menu"></div>
             <div id="pos-orders"></div>
             <div class="dock">
-              <strong>Cart total: <span id="cart-total">₹0</span></strong>
+              <div class="dock-cart-row">
+                <strong>Cart total: <span id="cart-total">₹0</span></strong>
+                <button type="button" class="btn-text" id="btnPosOrderSummary" disabled>Order summary</button>
+              </div>
               <div class="row-btns">
                 <button type="button" class="btn btn-primary" id="btnPlace">Place order</button>
                 <button type="button" class="btn btn-outline" id="btnClear">Clear cart</button>
@@ -1115,6 +1144,11 @@
   <div class="modal-backdrop" id="planBackdrop"><div class="modal modal-wide"><div class="modal-h"><h2 id="planDetailTitle">Plan</h2></div>
     <div class="modal-body" id="planDetailBody"></div>
     <div class="modal-actions"><button type="button" class="btn-text" id="closePlan">Back</button></div>
+  </div></div>
+
+  <div class="modal-backdrop" id="posSummaryBackdrop"><div class="modal"><div class="modal-h"><h2>Order summary</h2></div>
+    <div class="modal-body" id="posSummaryBody"></div>
+    <div class="modal-actions"><button type="button" class="btn-text" id="closePosSummary">Close</button></div>
   </div></div>
 
   {{ web_modules|json_script:"web-modules-data" }}
@@ -1639,6 +1673,12 @@
       renderDashboardCharts();
     }
 
+    /** QR / web guest tickets that skip the POS counter list (kitchen handles them). */
+    function isQrDirectKitchenOrder(o){
+      var n = (o.notes || '').trim();
+      return n === 'QR menu' || n.toLowerCase() === 'qr guest web' || n.toLowerCase().indexOf('qr guest') === 0;
+    }
+
     function renderPos(){
       if (!sync) return;
       var menu = (sync.menu_items||[]).filter(function(m){ return m.is_available; });
@@ -1709,16 +1749,20 @@
       }
       var total = 0; Object.keys(cart).forEach(function(id){ var m=menu.find(function(x){ return x.id==+id; }); if(m) total += m.price*(cart[id]||0); });
       $('cart-total').textContent = money(total);
+      var cartHasLines = Object.keys(cart).some(function(id){ return (cart[id]||0) > 0; });
+      var sumBtn = $('btnPosOrderSummary');
+      if (sumBtn) sumBtn.disabled = !cartHasLines;
       var open = (sync.orders||[]).filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status)<0; });
+      var posOpen = open.filter(function(o){ return !isQrDirectKitchenOrder(o); });
       var oh = '<p class="hint"><strong>Active orders</strong></p>';
-      open.forEach(function(o){
+      posOpen.forEach(function(o){
         oh += '<div class="card"><div>Order #'+o.id+' · '+o.status+' · '+money(o.total_cents)+'</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">';
         if (o.status==='OPEN') oh += '<button type="button" class="btn btn-primary btn-sm" data-act="kitchen" data-oid="'+o.id+'">Send kitchen</button>';
         if (['PAID','CANCELLED'].indexOf(o.status)<0) oh += '<button type="button" class="btn btn-sm btn-pay" data-act="pay" data-oid="'+o.id+'">Pay</button>';
         if (o.status!=='PAID') oh += '<button type="button" class="btn btn-outline btn-sm" data-act="cancel" data-oid="'+o.id+'">Cancel</button>';
         oh += '</div></div>';
       });
-      $('pos-orders').innerHTML = open.length?oh:'';
+      $('pos-orders').innerHTML = posOpen.length?oh:'';
       $('pos-orders').querySelectorAll('button[data-act]').forEach(function(b){
         b.onclick = function(){ var oid=+b.getAttribute('data-oid'), act=b.getAttribute('data-act');
           if (act==='pay') api('PATCH','/orders/'+oid+'/',{status:'PAID'}).then(function(){ loadSync().then(function(){ renderPos(); dashStats(); }); });
@@ -2587,7 +2631,7 @@
       if (dlApk) {
         dlApk.addEventListener('click', function(e){
           e.preventDefault();
-          fetch('/download/android-app/')
+          fetch('/download/android-app/?v={{ apk_cache_bust }}', { cache: 'no-store' })
             .then(function(r){
               if (!r.ok) {
                 return r.text().then(function(t){
@@ -2601,7 +2645,7 @@
               var u = URL.createObjectURL(blob);
               var a = document.createElement('a');
               a.href = u;
-              a.download = 'pimux.apk';
+              a.download = 'Pimux.apk';
               document.body.appendChild(a);
               a.click();
               document.body.removeChild(a);
@@ -2721,6 +2765,34 @@
       api('POST','/orders/',{lines:lines,status:'OPEN'}).then(function(r){ if(r.ok){ cart={}; loadSync().then(function(){ renderPos(); dashStats(); renderKitchen(); }); } else alert('Order failed'); });
     };
     $('btnClear').onclick = function(){ cart={}; renderPos(); };
+
+    function openPosOrderSummary(){
+      if (!sync) return;
+      var menuAll = sync.menu_items || [];
+      var ids = Object.keys(cart).filter(function(id){ return (cart[id]||0) > 0; });
+      if (!ids.length) return;
+      var rows = '';
+      var t = 0;
+      ids.map(function(id){ return +id; }).sort(function(a,b){
+        var na = (menuAll.find(function(x){ return x.id===a; })||{}).name || '';
+        var nb = (menuAll.find(function(x){ return x.id===b; })||{}).name || '';
+        return na.localeCompare(nb);
+      }).forEach(function(mid){
+        var m = menuAll.find(function(x){ return x.id===mid; });
+        var q = cart[mid] || 0;
+        var nm = m ? m.name : ('Item #' + mid);
+        var unit = m ? m.price : 0;
+        var line = unit * q;
+        t += line;
+        rows += '<div class="pos-summary-line"><span>'+escapeHtml(q)+'× '+escapeHtml(nm)+'</span><span>'+money(line)+'</span></div>';
+      });
+      $('posSummaryBody').innerHTML = rows + '<div class="pos-summary-total"><span>Total</span><span>'+money(t)+'</span></div>';
+      $('posSummaryBackdrop').classList.add('open');
+    }
+    var btnPosSum = $('btnPosOrderSummary');
+    if (btnPosSum) btnPosSum.onclick = openPosOrderSummary;
+    $('closePosSummary').onclick = function(){ $('posSummaryBackdrop').classList.remove('open'); };
+    $('posSummaryBackdrop').onclick = function(e){ if (e.target === $('posSummaryBackdrop')) $('posSummaryBackdrop').classList.remove('open'); };
 
     wireNav();
     wireProfile();

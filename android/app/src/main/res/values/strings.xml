@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">pimux</string>
+    <!-- Launcher name: defined in app/build.gradle.kts via resValue("string", "app_name", …) so release/debug APKs always match. -->
 </resources>

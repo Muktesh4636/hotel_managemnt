@@ -149,11 +149,13 @@ class RestaurantViewModel(
 
     suspend fun validateQrMenuToken(token: String): Boolean = repo.validateQrMenuToken(token)
 
-    fun placeGuestMenuOrder(onFinished: (() -> Unit)? = null) =
+    fun placeGuestMenuOrder(onFinished: ((orderId: Long?) -> Unit)? = null) =
         viewModelScope.launch {
-            repo.placeCustomerMenuOrder(_guestCart.value)
+            val id = repo.placeCustomerMenuOrder(_guestCart.value)
             clearGuestCart()
-            onFinished?.invoke()
+            withContext(Dispatchers.Main) {
+                onFinished?.invoke(id)
+            }
         }
 
     fun placeOrder() =
