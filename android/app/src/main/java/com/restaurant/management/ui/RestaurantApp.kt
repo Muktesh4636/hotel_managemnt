@@ -71,6 +71,18 @@ private val moreRoutes =
     )
 
 /**
+ * When opening Operations from the bottom bar, always land on the hub module list if it is
+ * already under the current stack (e.g. user was on Order history or QR menu).
+ */
+private fun NavController.navigateToMoreHubFromBottomBar(): Boolean {
+    val popped = popBackStack(Destinations.MORE, inclusive = false)
+    if (!popped) {
+        navigateToBottomTab(Destinations.MORE)
+    }
+    return popped
+}
+
+/**
  * Bottom tabs share one pattern so the back stack never mixes Operations deep-links with
  * Home/POS/Kitchen in a way that drops taps (see Navigation "Bottom navigation" guidance).
  */
@@ -140,7 +152,14 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
                                 unselectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
                             ),
                         onClick = {
-                            navController.navigateToBottomTab(tab.route)
+                            if (tab.route == Destinations.MORE) {
+                                if (currentRoute == Destinations.MORE) {
+                                    return@NavigationBarItem
+                                }
+                                navController.navigateToMoreHubFromBottomBar()
+                            } else {
+                                navController.navigateToBottomTab(tab.route)
+                            }
                         },
                     )
                 }

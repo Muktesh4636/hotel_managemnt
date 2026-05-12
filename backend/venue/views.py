@@ -172,10 +172,28 @@ class ExpenseViewSet(OwnerScopedViewSet):
         serializer.save(**extra)
 
 
+STALE_KITCHEN_AUTO_COMPLETE_HOURS = 12
+
+
+def _auto_serve_stale_kitchen_orders(user) -> None:
+    """
+    IN_KITCHEN / READY tickets older than 12 hours are marked SERVED so they leave
+    kitchen queues (Android, web) without staff tapping Close order.
+    """
+    now_ms = int(timezone.now().timestamp() * 1000)
+    cutoff = now_ms - STALE_KITCHEN_AUTO_COMPLETE_HOURS * 60 * 60 * 1000
+    VenueOrder.objects.filter(
+        owner=user,
+        status__in=("IN_KITCHEN", "READY"),
+        created_at_epoch_millis__lt=cutoff,
+    ).update(status="SERVED")
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def sync_full(request):
     user = request.user
+    _auto_serve_stale_kitchen_orders(user)
     tables = VenueTable.objects.filter(owner=user)
     menu = MenuItem.objects.filter(owner=user)
     orders = VenueOrder.objects.filter(owner=user).prefetch_related("lines")

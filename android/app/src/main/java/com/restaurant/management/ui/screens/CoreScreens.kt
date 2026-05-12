@@ -660,6 +660,18 @@ object CoreScreens {
         }
 
         Box(Modifier.fillMaxSize()) {
+            val kitchenQueueOrders =
+                remember(orders) {
+                    orders.filter { ow ->
+                        when (ow.order.status) {
+                            OrderStatus.PAID,
+                            OrderStatus.CANCELLED,
+                            OrderStatus.SERVED,
+                            -> false
+                            else -> true
+                        }
+                    }
+                }
             Column(
                 modifier =
                     Modifier
@@ -668,7 +680,7 @@ object CoreScreens {
             ) {
                 ScreenHeader(
                     title = "Kitchen",
-                    subtitle = "Tap order title for summary · long-press for actions · tap a line to bump status",
+                    subtitle = "Tap order title for summary · long-press for more actions · tap a line to bump · Close order or wait 12h to clear from this list",
                     accent = HeaderAccent.Tertiary,
                     decorationResId = R.drawable.decor_kitchen_pot,
                 )
@@ -680,9 +692,7 @@ object CoreScreens {
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     lazyItems(
-                        orders.filter {
-                            it.order.status != OrderStatus.PAID && it.order.status != OrderStatus.CANCELLED
-                        },
+                        kitchenQueueOrders,
                         key = { it.order.id },
                     ) { ow ->
                         val tableLabel =
@@ -750,6 +760,27 @@ object CoreScreens {
                                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f),
                                     modifier = Modifier.padding(top = 6.dp),
                                 )
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                    modifier = Modifier.padding(top = 10.dp, bottom = 8.dp),
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { vm.markServed(ow.order.id) },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text("Close order")
+                                    }
+                                    Button(
+                                        onClick = { vm.printOrderBill(toastCtx, ow.order.id) },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text("Print bill")
+                                    }
+                                }
                             }
                         }
                     }

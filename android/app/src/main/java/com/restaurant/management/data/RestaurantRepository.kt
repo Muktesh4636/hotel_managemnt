@@ -69,6 +69,29 @@ class RestaurantRepository(
         } catch (e: Exception) {
             if (!isNetworkFailure(e)) throw e
         }
+        expireStaleKitchenOrdersLocal()
+    }
+
+    /**
+     * IN_KITCHEN / READY orders older than 12 hours → SERVED (same as kitchen "Close order"),
+     * so they disappear from the kitchen list. Runs after every sync and when offline-only.
+     */
+    suspend fun expireStaleKitchenOrdersLocal() {
+        val cutoff = System.currentTimeMillis() - 12L * 60 * 60 * 1000
+        val stale =
+            setOf(
+                OrderStatus.IN_KITCHEN,
+                OrderStatus.READY,
+            )
+        db.withTransaction {
+            val candidates =
+                orders.recentOrders(500).filter { ow ->
+                    ow.order.status in stale && ow.order.createdAtEpochMillis < cutoff
+                }
+            for (ow in candidates) {
+                orders.updateOrder(ow.order.copy(status = OrderStatus.SERVED))
+            }
+        }
     }
 
     fun observeTables(): Flow<List<TableEntity>> = tables.observeTables()
