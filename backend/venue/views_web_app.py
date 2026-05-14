@@ -35,12 +35,14 @@ def _web_route_from_request(
     workspace_module: str | None = None,
 ) -> dict[str, str]:
     """
-    segment: sign-in | dashboard | pos | kitchen | orders | reports | workspace | "" (default shell).
+    segment: sign-in | dashboard | pos | kitchen | orders | reports | tables | workspace | "" (default shell).
     module: internal operations slug (e.g. menu_admin) when URL is /workspace/<kebab>/.
     """
     # URLconf passes this kwarg for path("workspace/<slug:workspace_module>/", web_app).
     if workspace_module is not None:
         mod = workspace_module.lower().replace("-", "_")
+        if mod == "tables":
+            return {"segment": "tables", "module": ""}
         if mod and not _valid_workspace_module(mod):
             mod = ""
         return {"segment": "workspace", "module": mod}
@@ -52,11 +54,13 @@ def _web_route_from_request(
     first = parts[0].lower()
     if first == "sign-in":
         return {"segment": "sign-in", "module": ""}
-    if first in ("dashboard", "pos", "kitchen", "orders", "reports"):
+    if first in ("dashboard", "pos", "kitchen", "orders", "reports", "tables"):
         return {"segment": first, "module": ""}
     if first == "workspace":
         raw = parts[1] if len(parts) > 1 else ""
         mod = raw.lower().replace("-", "_") if raw else ""
+        if mod == "tables":
+            return {"segment": "tables", "module": ""}
         if mod and not _valid_workspace_module(mod):
             mod = ""
         return {"segment": "workspace", "module": mod}

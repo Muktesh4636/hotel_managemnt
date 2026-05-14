@@ -191,6 +191,24 @@ class BackendGateway(
         syncPull()
     }
 
+    suspend fun createVenueTable(
+        label: String,
+        section: String,
+    ) {
+        val body =
+            JSONObject()
+                .put("label", label)
+                .put("section", section.ifBlank { "Main" })
+                .put("status", TableStatus.FREE)
+        client.post("/api/v1/tables/", body.toString())
+        syncPull()
+    }
+
+    suspend fun deleteVenueTable(tableId: Long) {
+        client.delete("/api/v1/tables/$tableId/")
+        syncPull()
+    }
+
     suspend fun setMenuItemAvailability(
         item: MenuItemEntity,
         available: Boolean,
@@ -398,6 +416,48 @@ class BackendGateway(
 
     suspend fun deleteStaffAbsence(id: Long) {
         client.delete("/api/v1/staff-absences/$id/")
+        syncPull()
+    }
+
+    suspend fun createTableReservation(
+        tableId: Long?,
+        guestName: String,
+        phone: String,
+        partySize: Int,
+        startMillis: Long,
+        endMillis: Long,
+        notes: String?,
+    ) {
+        val o =
+            JSONObject()
+                .put("guest_name", guestName)
+                .put("phone", phone)
+                .put("party_size", partySize)
+                .put("start_epoch_millis", startMillis)
+                .put("end_epoch_millis", endMillis)
+                .put("status", "PENDING")
+        if (notes != null) {
+            o.put("notes", notes)
+        }
+        if (tableId != null) {
+            o.put("table_id", tableId)
+        } else {
+            o.put("table_id", JSONObject.NULL)
+        }
+        client.post("/api/v1/reservations/", o.toString())
+        syncPull()
+    }
+
+    suspend fun patchTableReservation(
+        id: Long,
+        bodyJson: String,
+    ) {
+        client.patch("/api/v1/reservations/$id/", bodyJson)
+        syncPull()
+    }
+
+    suspend fun deleteTableReservation(id: Long) {
+        client.delete("/api/v1/reservations/$id/")
         syncPull()
     }
 

@@ -100,9 +100,9 @@ interface OrderDao {
     fun observePaidRevenueSince(from: Long): Flow<Int>
 
     @Query(
-        "SELECT COUNT(*) FROM orders WHERE status NOT IN ('PAID', 'CANCELLED')",
+        "SELECT COUNT(*) FROM orders WHERE createdAtEpochMillis >= :fromMillis",
     )
-    fun observeActiveOrderCount(): Flow<Int>
+    fun observeOrderCountSince(fromMillis: Long): Flow<Int>
 
     @Query("DELETE FROM order_lines")
     suspend fun deleteAllLines()

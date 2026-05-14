@@ -13,6 +13,7 @@ import com.restaurant.management.data.local.entity.OrderLineEntity
 import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
 import com.restaurant.management.data.local.entity.TableEntity
+import com.restaurant.management.data.local.entity.TableReservationEntity
 import com.restaurant.management.data.remote.BackendGateway
 import com.restaurant.management.data.remote.DjangoApiClient
 import com.restaurant.management.model.KitchenLineStatus
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 class RestaurantRepository(
     private val db: AppDatabase,
@@ -45,6 +47,7 @@ class RestaurantRepository(
     private val staff = db.staffDao()
     private val staffAbsences = db.staffAbsenceDao()
     private val settings = db.settingsDao()
+    private val tableReservationDao = db.tableReservationDao()
 
     private fun remoteGateway(): BackendGateway? = BackendGateway.fromPrefs(appContext, db)
 
@@ -117,6 +120,8 @@ class RestaurantRepository(
 
     fun observeSettings(): Flow<AppSettingsEntity?> = settings.observeSettings()
 
+    fun observeTableReservations(): Flow<List<TableReservationEntity>> = tableReservationDao.observeAll()
+
     suspend fun getSettingsOnce(): AppSettingsEntity? = settings.getOnce()
 
     suspend fun ensureQrMenuToken() {
@@ -146,15 +151,15 @@ class RestaurantRepository(
         val start = LocalDate.now(zone).atStartOfDay(zone).toInstant().toEpochMilli()
         return combine(
             orders.observePaidRevenueSince(start),
-            orders.observeActiveOrderCount(),
+            orders.observeOrderCountSince(start),
             expenses.observeExpenseTotalSince(start),
             staff.observeStaff().map { list -> list.sumOf { it.salaryCents } },
-        ) { revenueCents, activeOrders, todayExpenseCents, monthlySalaryCents ->
+        ) { revenueCents, totalOrdersToday, todayExpenseCents, monthlySalaryCents ->
             val dailySalaryShareCents = monthlySalaryCents / 30
             val netProfitCents = revenueCents - todayExpenseCents - dailySalaryShareCents
             DashboardStats(
                 todayNetProfitCents = netProfitCents,
-                activeOrders = activeOrders,
+                totalOrdersToday = totalOrdersToday,
             )
         }
     }
@@ -1089,7 +1094,8 @@ class RestaurantRepository(
     data class DashboardStats(
         /** Paid sales today minus today's logged expenses and a 1/30 share of monthly salaries (paise). */
         val todayNetProfitCents: Int,
-        val activeOrders: Int,
+        /** All tickets created since local midnight (any status). */
+        val totalOrdersToday: Int,
     )
 
     data class ReportLinePreview(
@@ -1165,5 +1171,69 @@ class RestaurantRepository(
             tableId = ow.order.tableId,
             lines = lines,
         )
+    }
+
+    suspend fun createTableReservationRemote(
+        tableId: Long?,
+        guestName: String,
+        phone: String,
+        partySize: Int,
+        startMillis: Long,
+        endMillis: Long,
+        notes: String?,
+    ): Boolean {
+        val remote = remoteGateway() ?: return false
+        return runCatching {
+            remote.createTableReservation(tableId, guestName, phone, partySize, startMillis, endMillis, notes)
+            true
+        }.getOrElse { e ->
+            if (isNetworkFailure(e)) false else throw e
+        }
+    }
+
+    suspend fun updateReservationStatusRemote(
+        id: Long,
+        status: String,
+    ): Boolean {
+        val remote = remoteGateway() ?: return false
+        return runCatching {
+            remote.patchTableReservation(id, JSONObject().put("status", status).toString())
+            true
+        }.getOrElse { e ->
+            if (isNetworkFailure(e)) false else throw e
+        }
+    }
+
+    suspend fun deleteTableReservationRemote(id: Long): Boolean {
+        val remote = remoteGateway() ?: return false
+        return runCatching {
+            remote.deleteTableReservation(id)
+            true
+        }.getOrElse { e ->
+            if (isNetworkFailure(e)) false else throw e
+        }
+    }
+
+    suspend fun createVenueTableRemote(
+        label: String,
+        section: String,
+    ): Boolean {
+        val remote = remoteGateway() ?: return false
+        return runCatching {
+            remote.createVenueTable(label, section)
+            true
+        }.getOrElse { e ->
+            if (isNetworkFailure(e)) false else throw e
+        }
+    }
+
+    suspend fun deleteVenueTableRemote(id: Long): Boolean {
+        val remote = remoteGateway() ?: return false
+        return runCatching {
+            remote.deleteVenueTable(id)
+            true
+        }.getOrElse { e ->
+            if (isNetworkFailure(e)) false else throw e
+        }
     }
 }

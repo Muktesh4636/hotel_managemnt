@@ -54,6 +54,7 @@ data class ModuleFlags(
     val inventory: Boolean = true,
     val staff: Boolean = true,
     val expenses: Boolean = true,
+    val tables: Boolean = true,
 )
 
 fun parseModulesJson(raw: String?): ModuleFlags {
@@ -67,6 +68,7 @@ fun parseModulesJson(raw: String?): ModuleFlags {
             inventory = o.optBoolean("inventory", true),
             staff = o.optBoolean("staff", true),
             expenses = o.optBoolean("expenses", true),
+            tables = o.optBoolean("tables", true),
         )
     } catch (_: Exception) {
         ModuleFlags()
@@ -80,6 +82,7 @@ fun modulesToJson(flags: ModuleFlags): String =
         put("inventory", flags.inventory)
         put("staff", flags.staff)
         put("expenses", flags.expenses)
+        put("tables", flags.tables)
     }.toString()
 
 fun hubRouteEnabled(
@@ -96,5 +99,6 @@ fun hubRouteEnabled(
         Destinations.INVENTORY -> flags.inventory
         Destinations.EXPENSES -> flags.expenses
         Destinations.STAFF -> flags.staff
+        Destinations.TABLES -> flags.tables
         else -> true
     }

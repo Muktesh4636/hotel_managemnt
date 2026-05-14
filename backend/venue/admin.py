@@ -7,6 +7,7 @@ from .models import (
     OrderLine,
     StaffAbsence,
     StaffMember,
+    TableReservation,
     VenueOrder,
     VenueSettings,
     VenueTable,
@@ -18,6 +19,13 @@ class VenueTableAdmin(admin.ModelAdmin):
     list_display = ("id", "owner", "label", "section", "status")
     list_filter = ("section", "status")
     search_fields = ("label", "owner__username")
+
+
+@admin.register(TableReservation)
+class TableReservationAdmin(admin.ModelAdmin):
+    list_display = ("id", "owner", "guest_name", "party_size", "table", "status", "start_epoch_millis")
+    list_filter = ("status",)
+    search_fields = ("guest_name", "phone", "owner__username")
 
 
 @admin.register(MenuItem)

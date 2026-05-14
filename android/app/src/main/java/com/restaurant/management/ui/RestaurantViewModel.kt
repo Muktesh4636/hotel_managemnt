@@ -38,7 +38,7 @@ class RestaurantViewModel(
         repo.observeDashboardToday().stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            RestaurantRepository.DashboardStats(todayNetProfitCents = 0, activeOrders = 0),
+            RestaurantRepository.DashboardStats(todayNetProfitCents = 0, totalOrdersToday = 0),
         )
 
     val tables =
@@ -95,6 +95,13 @@ class RestaurantViewModel(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
             null,
+        )
+
+    val tableReservations =
+        repo.observeTableReservations().stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyList(),
         )
 
     private val _cart = MutableStateFlow<Map<Long, Int>>(emptyMap())
@@ -218,6 +225,60 @@ class RestaurantViewModel(
         tableId: Long,
         status: String,
     ) = viewModelScope.launch { repo.setTableStatus(tableId, status) }
+
+    fun createTableReservation(
+        tableId: Long?,
+        guestName: String,
+        phone: String,
+        partySize: Int,
+        startMillis: Long,
+        endMillis: Long,
+        notes: String?,
+        onDone: (Boolean) -> Unit,
+    ) = viewModelScope.launch {
+        val ok =
+            withContext(Dispatchers.IO) {
+                repo.createTableReservationRemote(
+                    tableId,
+                    guestName,
+                    phone,
+                    partySize,
+                    startMillis,
+                    endMillis,
+                    notes,
+                )
+            }
+        withContext(Dispatchers.Main) { onDone(ok) }
+    }
+
+    fun updateReservationStatus(
+        id: Long,
+        status: String,
+    ) = viewModelScope.launch {
+        withContext(Dispatchers.IO) { repo.updateReservationStatusRemote(id, status) }
+    }
+
+    fun deleteReservation(id: Long) =
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { repo.deleteTableReservationRemote(id) }
+        }
+
+    fun addVenueTable(
+        label: String,
+        section: String,
+        onDone: (Boolean) -> Unit,
+    ) = viewModelScope.launch {
+        val ok =
+            withContext(Dispatchers.IO) {
+                repo.createVenueTableRemote(label.trim(), section.trim().ifBlank { "Main" })
+            }
+        withContext(Dispatchers.Main) { onDone(ok) }
+    }
+
+    fun deleteVenueTable(id: Long) =
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { repo.deleteVenueTableRemote(id) }
+        }
 
     fun setMenuAvailability(
         item: MenuItemEntity,

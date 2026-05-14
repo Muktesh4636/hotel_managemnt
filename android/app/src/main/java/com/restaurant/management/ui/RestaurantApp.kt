@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalDining
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.TableRestaurant
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -34,6 +35,7 @@ import androidx.navigation.compose.rememberNavController
 import com.restaurant.management.ui.screens.AdminScreens
 import com.restaurant.management.ui.screens.CoreScreens
 import com.restaurant.management.ui.screens.QrMenuScreen
+import com.restaurant.management.ui.screens.TablesReservationsScreen
 import com.restaurant.management.ui.util.parseModulesJson
 
 object Destinations {
@@ -49,6 +51,7 @@ object Destinations {
     const val EXPENSES = "expenses"
     const val SETTINGS = "settings"
     const val QR_MENU = "qr_menu"
+    const val TABLES = "tables"
 }
 
 private data class BottomTab(
@@ -114,6 +117,9 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
                 add(BottomTab(Destinations.POS, "POS", Icons.Default.ShoppingCart))
                 if (moduleFlags.kitchen) {
                     add(BottomTab(Destinations.KITCHEN, "Kitchen", Icons.Default.LocalDining))
+                }
+                if (moduleFlags.tables) {
+                    add(BottomTab(Destinations.TABLES, "Tables", Icons.Default.TableRestaurant))
                 }
                 add(BottomTab(Destinations.MORE, "More", Icons.Default.Apps))
             }
@@ -214,6 +220,9 @@ fun RestaurantRoot(vm: RestaurantViewModel) {
             }
             composable(Destinations.QR_MENU) {
                 QrMenuScreen(vm)
+            }
+            composable(Destinations.TABLES) {
+                TablesReservationsScreen(vm)
             }
         }
             AdminScreens.GlobalOrderDialogs(vm)

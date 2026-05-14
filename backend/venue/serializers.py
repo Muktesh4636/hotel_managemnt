@@ -8,6 +8,7 @@ from .models import (
     OrderLine,
     StaffAbsence,
     StaffMember,
+    TableReservation,
     VenueOrder,
     VenueSettings,
     VenueTable,
@@ -18,6 +19,62 @@ class VenueTableSerializer(serializers.ModelSerializer):
     class Meta:
         model = VenueTable
         fields = ("id", "label", "section", "status")
+
+
+class TableReservationSerializer(serializers.ModelSerializer):
+    table_id = serializers.PrimaryKeyRelatedField(
+        source="table",
+        queryset=VenueTable.objects.none(),
+        allow_null=True,
+        required=False,
+    )
+
+    class Meta:
+        model = TableReservation
+        fields = (
+            "id",
+            "table_id",
+            "guest_name",
+            "phone",
+            "party_size",
+            "start_epoch_millis",
+            "end_epoch_millis",
+            "status",
+            "notes",
+            "created_at_epoch_millis",
+        )
+        read_only_fields = ("id", "created_at_epoch_millis")
+        extra_kwargs = {
+            # Create can omit end: server sets start + default seating window (see validate).
+            "end_epoch_millis": {"required": False},
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            self.fields["table_id"].queryset = VenueTable.objects.filter(owner=request.user)
+
+    def validate(self, attrs):
+        start = attrs.get("start_epoch_millis")
+        end = attrs.get("end_epoch_millis")
+        if self.instance is not None:
+            if start is None:
+                start = self.instance.start_epoch_millis
+            if end is None:
+                end = self.instance.end_epoch_millis
+        # New booking without end: use a generous default window (guests often stay longer than planned).
+        if self.instance is None and start is not None and end is None:
+            attrs["end_epoch_millis"] = int(start) + 3 * 3600 * 1000
+            end = attrs["end_epoch_millis"]
+        if start is not None and end is not None and end <= start:
+            raise serializers.ValidationError(
+                {"end_epoch_millis": "End time must be after start time."},
+            )
+        ps = attrs.get("party_size", getattr(self.instance, "party_size", None))
+        if ps is not None and ps < 1:
+            raise serializers.ValidationError({"party_size": "Number of guests must be at least 1."})
+        return attrs
 
 
 class MenuItemSerializer(serializers.ModelSerializer):

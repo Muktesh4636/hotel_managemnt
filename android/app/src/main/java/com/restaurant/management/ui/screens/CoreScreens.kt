@@ -94,9 +94,10 @@ object CoreScreens {
             ) {
                 FoodHeroBanner()
                 StatCard(title = "Today's net profit", value = formatCents(stats.todayNetProfitCents), flavor = 0)
-                StatCard(title = "Active orders", value = stats.activeOrders.toString(), flavor = 1)
+                StatCard(title = "Total orders today", value = stats.totalOrdersToday.toString(), flavor = 1)
                 Text(
-                    "Net profit uses paid sales today, minus expenses logged today (Operations → Expenses), and one day's share of staff salaries (monthly total ÷ 30).",
+                    "Net profit uses paid sales today, minus expenses logged today (Operations → Expenses), and one day's share of staff salaries (monthly total ÷ 30). " +
+                        "Total orders today counts every ticket created since midnight on this device.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

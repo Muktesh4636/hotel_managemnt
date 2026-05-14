@@ -16,6 +16,38 @@ class VenueTable(models.Model):
         ordering = ("section", "label")
 
 
+class TableReservation(models.Model):
+    """
+    Bookings for a specific table (optional until assigned) or general party holds.
+    Status: PENDING → CONFIRMED → SEATED → COMPLETED, or CANCELLED / NO_SHOW.
+    """
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="table_reservations",
+    )
+    table = models.ForeignKey(
+        VenueTable,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reservations",
+    )
+    guest_name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=64, blank=True, default="")
+    party_size = models.PositiveIntegerField(default=2, verbose_name="Number of guests")
+    start_epoch_millis = models.BigIntegerField()
+    # Planned window for calendar / overlap hints — not a strict checkout; staff can extend via PATCH.
+    end_epoch_millis = models.BigIntegerField()
+    status = models.CharField(max_length=32, default="PENDING")
+    notes = models.CharField(max_length=2000, null=True, blank=True)
+    created_at_epoch_millis = models.BigIntegerField(default=0)
+
+    class Meta:
+        ordering = ("start_epoch_millis", "id")
+
+
 class MenuItem(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

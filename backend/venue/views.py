@@ -16,6 +16,7 @@ from .models import (
     OrderLine,
     StaffAbsence,
     StaffMember,
+    TableReservation,
     VenueOrder,
     VenueSettings,
     VenueTable,
@@ -29,6 +30,7 @@ from .serializers import (
     OrderLineReadSerializer,
     StaffAbsenceSerializer,
     StaffMemberSerializer,
+    TableReservationSerializer,
     VenueOrderPatchSerializer,
     VenueOrderReadSerializer,
     VenueOrderWriteSerializer,
@@ -51,6 +53,17 @@ class OwnerScopedViewSet(viewsets.ModelViewSet):
 class VenueTableViewSet(OwnerScopedViewSet):
     queryset = VenueTable.objects.all()
     serializer_class = VenueTableSerializer
+
+
+class TableReservationViewSet(OwnerScopedViewSet):
+    queryset = TableReservation.objects.all()
+    serializer_class = TableReservationSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(
+            owner=self.request.user,
+            created_at_epoch_millis=int(timezone.now().timestamp() * 1000),
+        )
 
 
 class MenuItemViewSet(OwnerScopedViewSet):
@@ -201,6 +214,7 @@ def sync_full(request):
     staff = StaffMember.objects.filter(owner=user)
     absences = StaffAbsence.objects.filter(staff__owner=user)
     expenses = Expense.objects.filter(owner=user)
+    reservations = TableReservation.objects.filter(owner=user).select_related("table")
     settings_obj, _ = VenueSettings.objects.get_or_create(
         owner=user,
         defaults={"venue_name": "My Restaurant"},
@@ -235,6 +249,7 @@ def sync_full(request):
             "staff": StaffMemberSerializer(staff, many=True).data,
             "staff_absences": StaffAbsenceSerializer(absences, many=True).data,
             "expenses": ExpenseSerializer(expenses, many=True).data,
+            "reservations": TableReservationSerializer(reservations, many=True).data,
             "settings": VenueSettingsSerializer(settings_obj).data,
         },
     )

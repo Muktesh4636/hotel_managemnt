@@ -3217,6 +3217,19 @@ object AdminScreens {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Text("Tables & reservations", modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = modules.tables,
+                        onCheckedChange = { modules = modules.copy(tables = it) },
+                    )
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text("Inventory", modifier = Modifier.weight(1f))
                     Switch(
                         checked = modules.inventory,

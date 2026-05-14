@@ -7,6 +7,7 @@ from .views_settings import VenueSettingsApi
 
 router = DefaultRouter()
 router.register(r"tables", views.VenueTableViewSet, basename="table")
+router.register(r"reservations", views.TableReservationViewSet, basename="reservation")
 router.register(r"menu-items", views.MenuItemViewSet, basename="menuitem")
 router.register(r"orders", views.VenueOrderViewSet, basename="order")
 router.register(r"order-lines", views.OrderLineViewSet, basename="orderline")

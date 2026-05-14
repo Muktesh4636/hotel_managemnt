@@ -21,6 +21,27 @@ object KitchenLineStatus {
     const val READY = "READY"
 }
 
+object ReservationStatus {
+    const val PENDING = "PENDING"
+    const val CONFIRMED = "CONFIRMED"
+    const val SEATED = "SEATED"
+    const val COMPLETED = "COMPLETED"
+    const val CANCELLED = "CANCELLED"
+    const val NO_SHOW = "NO_SHOW"
+}
+
+/** Short English label for reservation workflow states. */
+fun reservationStatusLabel(status: String): String =
+    when (status) {
+        ReservationStatus.PENDING -> "Pending"
+        ReservationStatus.CONFIRMED -> "Confirmed"
+        ReservationStatus.SEATED -> "Seated"
+        ReservationStatus.COMPLETED -> "Completed"
+        ReservationStatus.CANCELLED -> "Cancelled"
+        ReservationStatus.NO_SHOW -> "No-show"
+        else -> status
+    }
+
 /** Short English label for UI (stored values stay OPEN, CANCELLED, etc.). */
 fun orderStatusLabel(status: String): String =
     when (status) {

@@ -115,6 +115,72 @@
     .login-title { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--ink); letter-spacing: -0.03em; line-height: 1.2; }
     .login-lede { margin: 0.65rem 0 0; color: var(--muted); font-size: 0.9375rem; line-height: 1.55; }
     label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted); margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .resv-form label {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: var(--ink);
+      text-transform: none;
+      letter-spacing: -0.01em;
+      margin: 18px 0 8px;
+    }
+    .resv-form h3.chart-card-title + label {
+      margin-top: 12px;
+    }
+    .resv-form select,
+    .resv-form input[type="number"],
+    .resv-form input[type="datetime-local"],
+    .resv-form input[type="tel"] {
+      font-size: 1.0625rem;
+      min-height: 48px;
+    }
+    .resv-tbl-help {
+      margin: 10px 0 0;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      color: var(--ink);
+      font-weight: 500;
+      opacity: 0.9;
+    }
+    .settings-mod-list {
+      margin: 18px 0 0;
+      padding: 14px 16px;
+      background: var(--surface-2);
+      border-radius: var(--r-md);
+      border: 1px solid var(--outline-variant);
+    }
+    .settings-mod-list > h4 {
+      margin: 0 0 4px;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: var(--secondary);
+    }
+    .settings-mod-list > .hint {
+      margin: 0 0 12px;
+      font-size: 0.8125rem;
+      line-height: 1.45;
+    }
+    .settings-mod-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--outline-variant);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .settings-mod-row:last-of-type {
+      border-bottom: none;
+      padding-bottom: 2px;
+    }
+    .settings-mod-row input[type="checkbox"] {
+      width: 1.25rem;
+      height: 1.25rem;
+      accent-color: var(--primary);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
     input {
       width: 100%;
       padding: 12px 14px;
@@ -574,6 +640,130 @@
     .reports-lede { margin: 0 0 18px; line-height: 1.5; }
     .pad-reports .dash-metrics-title { margin-top: 22px; }
     .pad-reports .dash-metrics-title:first-child { margin-top: 0; }
+    .pad-reports .chart-body { min-height: 148px; }
+    .pad-reports .chart-body.chart-body--tall { min-height: 240px; }
+    .reports-3mo-lede { margin: -6px 0 16px; line-height: 1.45; font-size: 0.8125rem; }
+    .rep-top-3mo-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    @media (min-width: 720px) {
+      .rep-top-3mo-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .rep-top-col {
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--r-md);
+      padding: 14px 14px 10px;
+      background: var(--surface);
+      min-height: 0;
+    }
+    .rep-top-month { margin: 0 0 6px; font-size: 0.9375rem; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+    .rep-mtd-badge { font-size: 0.625rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .rep-top-meta { margin: 0 0 10px; font-size: 0.8125rem; color: var(--secondary-deep); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .rep-top-h { margin: 0 0 8px; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    .rep-top-item {
+      display: grid;
+      grid-template-columns: 22px 1fr auto;
+      align-items: center;
+      gap: 6px 8px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--outline-variant);
+      font-size: 0.8125rem;
+    }
+    .rep-top-item:last-child { border-bottom: none; }
+    .rep-top-rank { font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
+    .rep-top-name { font-weight: 600; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rep-top-qty { font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .tbl-floor-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .tbl-floor-cell {
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      border: 2px solid var(--outline-variant);
+      border-radius: var(--r-md);
+      padding: 10px 12px;
+      background: var(--surface-2);
+      /* Fixed tile size so colour/status changes never reflow neighbours */
+      width: 12rem;
+      min-width: 12rem;
+      max-width: 12rem;
+      height: 11rem;
+      min-height: 11rem;
+      max-height: 11rem;
+      overflow: hidden;
+    }
+    .tbl-floor-cell > strong {
+      display: block;
+      flex: 0 0 auto;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tbl-floor-cell .tbl-st-cycle {
+      flex: 0 0 auto;
+      min-height: 3.35rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tbl-floor-cell.tbl-floor--free {
+      border-color: #2e7d32;
+      background: #e8f5e9;
+    }
+    .tbl-floor-cell.tbl-floor--occupied {
+      border-color: #c62828;
+      background: #ffebee;
+    }
+    .tbl-floor-cell.tbl-floor--needs {
+      border-color: #ef6c00;
+      background: #fff3e0;
+    }
+    .tbl-floor-card-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 12px;
+    }
+    .tbl-floor-card-hd .chart-card-title {
+      margin: 0;
+    }
+    .tbl-add-toggle {
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--outline);
+      background: var(--surface-2);
+      color: var(--primary);
+      font-size: 1.45rem;
+      font-weight: 500;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .tbl-add-toggle:hover {
+      background: var(--surface);
+      border-color: var(--primary);
+    }
+    .tbl-add-panel {
+      margin-bottom: 14px;
+      padding: 12px;
+      background: var(--surface-2);
+      border-radius: var(--r-md);
+      border: 1px dashed var(--outline-variant);
+    }
+    .tbl-add-panel[hidden] {
+      display: none !important;
+    }
     .reports-chart-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -594,6 +784,19 @@
       margin-bottom: 12px;
     }
     .rep-range-row .btn-sm { padding: 8px 14px; font-size: 0.8125rem; }
+    .rep-range-mode-select {
+      font: inherit;
+      padding: 9px 12px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--outline);
+      background: var(--surface-2);
+      font-size: 0.875rem;
+      min-height: 42px;
+      min-width: min(100%, 14rem);
+      max-width: 100%;
+      cursor: pointer;
+      color: var(--ink);
+    }
     .rep-date-lbl {
       font-size: 0.6875rem;
       font-weight: 700;
@@ -726,6 +929,34 @@
       text-align: center;
       line-height: 1.15;
       max-width: 100%;
+    }
+    .vbar-footer {
+      display: block;
+      margin-top: 5px;
+      font-size: 0.625rem;
+      font-weight: 700;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      max-width: 100px;
+      line-height: 1.25;
+    }
+    .vbar-chart.vbar-chart--wide {
+      gap: 20px;
+      justify-content: center;
+      min-height: 200px;
+      padding: 10px 12px 6px;
+    }
+    .vbar-chart.vbar-chart--wide .vbar-col { width: 92px; }
+    .vbar-chart.vbar-chart--wide .vbar-bar-wrap { height: 178px; }
+    .vbar-chart.vbar-chart--wide .vbar-bar {
+      max-width: 52px;
+      border-radius: 8px 8px 0 0;
+    }
+    .vbar-chart.vbar-chart--wide .vbar-lbl {
+      font-size: 0.8125rem;
+      color: var(--ink);
+      font-weight: 800;
+      max-width: 100px;
     }
     .donut-row {
       display: flex;
@@ -1106,6 +1337,13 @@
       box-shadow: var(--shadow-sm);
     }
     .card.k { background: var(--secondary-container); border-color: rgba(45, 90, 71, 0.15); color: var(--on-secondary-container); }
+    .kitchen-card-head {
+      cursor: pointer;
+      user-select: none;
+      padding: 2px 0;
+    }
+    .kitchen-card-head:hover { text-decoration: underline; }
+    .kitchen-act-btn { font-weight: 600; color: var(--primary); margin-top: 6px; }
     .card.oh { background: var(--tertiary-container); border-color: rgba(95, 82, 59, 0.18); color: var(--on-tertiary-container); }
     .oh-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 12px; margin-bottom: 6px; }
     .oh-head strong { font-size: 1rem; letter-spacing: -0.02em; }
@@ -1234,6 +1472,10 @@
             <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
             <span class="nav-label">Reports</span>
           </button>
+          <button type="button" class="nav-item hidden" data-tab="tables" id="nav-tables">
+            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M22 10V12h-2v-2h2zM2 10v2h2v-2H2zm5 0h4v2H7v-2zm10 0h5v2h-5v-2zM6 4v2h12V4c0-.55-.45-1-1-1H7c-.55 0-1 .45-1 1zm13 4H5v11c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V8z"/></svg>
+            <span class="nav-label">Tables</span>
+          </button>
           <div class="nav-group" id="nav-group-ops">
             <button type="button" class="nav-item nav-item-ops" id="nav-more" aria-expanded="false" aria-controls="sidebar-ops-children" aria-label="Show or hide operation modules">
               <svg fill="currentColor" viewBox="0 0 24 24"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>
@@ -1325,7 +1567,7 @@
           </div>
         </div>
         <div id="page-kitchen" class="page hidden">
-          <header class="hdr t3"><div><h1>Kitchen</h1><p>Ticket queue — tap a line to advance</p></div></header>
+          <header class="hdr t3"><div><h1>Kitchen</h1><p>Tap order title for summary · use <strong>Order actions</strong> for view / edit / cancel · tap a line to bump · <strong>Close order</strong> or wait 12h to clear from this list</p></div></header>
           <div class="pad" id="kitchen-body"></div>
         </div>
         <div id="page-orders" class="page hidden">
@@ -1335,6 +1577,12 @@
         <div id="page-reports" class="page hidden">
           <header class="hdr t2"><div><h1>Reports</h1><p>Key venue figures (same rules as Dashboard)</p></div></header>
           <div class="pad" id="reports-body"></div>
+        </div>
+        <div id="page-tables" class="page hidden">
+          <header class="hdr t2"><div><h1>Tables &amp; reservations</h1><p>Floor status and bookings — same data as the Android app</p></div>
+            <button type="button" class="btn-icon" id="openProfileTables" aria-label="Profile"><svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
+          </header>
+          <div class="pad" id="tables-body"></div>
         </div>
         <div id="page-more" class="page hidden">
           <header class="hdr"><div><h1>Operations</h1><p>Back office &amp; configuration</p></div>
@@ -1380,6 +1628,7 @@
     <div class="modal-body order-hist-modal-body" id="orderHistBody"></div>
     <div class="modal-actions">
       <button type="button" class="btn-text" id="orderHistClose">Close</button>
+      <button type="button" class="btn btn-outline" id="orderHistPrintBtn">Print bill</button>
       <button type="button" class="btn btn-outline" id="orderHistEditBtn">Edit items</button>
     </div>
   </div></div>
@@ -1387,6 +1636,15 @@
   <div class="modal-backdrop" id="orderHistEditBackdrop"><div class="modal modal-wide"><div class="modal-h"><h2 id="orderHistEditTitle">Edit order</h2></div>
     <div class="modal-body order-hist-modal-body" id="orderHistEditBody"></div>
     <div class="modal-actions"><button type="button" class="btn-text" id="orderHistEditClose">Done</button></div>
+  </div></div>
+
+  <div class="modal-backdrop" id="kitchenActionsBackdrop"><div class="modal"><div class="modal-h"><h2 id="kitchenActionsTitle">Order</h2></div>
+    <div class="modal-body">
+      <button type="button" class="btn btn-outline kitchen-act" data-kact="view" style="width:100%;margin-bottom:8px">View line items</button>
+      <button type="button" class="btn btn-outline kitchen-act" data-kact="edit" style="width:100%;margin-bottom:8px">Edit order</button>
+      <button type="button" class="btn btn-outline kitchen-act" data-kact="cancel" style="width:100%;color:#b3261e;border-color:rgba(179,38,30,0.45)">Cancel order</button>
+    </div>
+    <div class="modal-actions"><button type="button" class="btn-text" id="kitchenActionsClose">Close</button></div>
   </div></div>
 
   {{ web_modules|json_script:"web-modules-data" }}
@@ -1415,6 +1673,7 @@
     var kitchenPollTimer = null;
     var orderHistDetailId = null;
     var orderHistEditId = null;
+    var kitchenMenuOrderId = null;
     var posCat = null;
     var posSelectedId = null;
     var currentOpsSlug = null;
@@ -1439,9 +1698,9 @@
         .then(function(r){ return r.text().then(function(t){ var j=null; try{j=t?JSON.parse(t):null}catch(e){} return {ok:r.ok,status:r.status,data:j,raw:t}; }); });
     }
     function parseModules(raw){
-      if (!raw || !String(raw).trim()) return {kitchen:true,qrMenu:true,inventory:true,staff:true,expenses:true};
+      if (!raw || !String(raw).trim()) return {kitchen:true,qrMenu:true,inventory:true,staff:true,expenses:true,tables:true};
       try { var o=JSON.parse(raw); return {
-        kitchen: o.kitchen!==false, qrMenu: o.qrMenu!==false, inventory: o.inventory!==false, staff: o.staff!==false, expenses: o.expenses!==false
+        kitchen: o.kitchen!==false, qrMenu: o.qrMenu!==false, inventory: o.inventory!==false, staff: o.staff!==false, expenses: o.expenses!==false, tables: o.tables!==false
       };} catch(e){ return parseModules(''); }
     }
     function hubOk(slug, f){
@@ -1450,6 +1709,7 @@
       if (slug==='inventory') return f.inventory;
       if (slug==='expenses') return f.expenses;
       if (slug==='staff') return f.staff;
+      if (slug==='tables') return f.tables;
       return true;
     }
     function escapeAttr(s){
@@ -1635,7 +1895,7 @@
       }
     }
 
-    function renderVBarChart(target, rows, maxVal, barClass){
+    function renderVBarChart(target, rows, maxVal, barClass, chartExtraClass){
       var el = typeof target === 'string' ? $(target) : target;
       if (!el) return;
       var max = Math.max(maxVal, 1);
@@ -1644,14 +1904,16 @@
         return;
       }
       var bc = barClass ? String(barClass) : '';
+      var xc = chartExtraClass ? String(chartExtraClass) : '';
       el.innerHTML =
-        '<div class="vbar-chart-scroll"><div class="vbar-chart" role="img">'+
+        '<div class="vbar-chart-scroll"><div class="vbar-chart '+escapeAttr(xc)+'" role="img">'+
         rows.map(function(r){
           var pct = Math.round((Math.abs(r.v) / max) * 100);
           var tip = escapeHtml(r.label) + ' · ' + escapeHtml(r.display || '');
+          var foot = r.footer ? '<span class="vbar-footer">'+r.footer+'</span>' : '';
           return '<div class="vbar-col"><div class="vbar-bar-wrap" title="'+tip+'">'+
             '<div class="vbar-bar '+bc+'" style="height:'+pct+'%"></div></div>'+
-            '<span class="vbar-lbl">'+escapeHtml(r.shortLabel || r.label)+'</span></div>';
+            '<span class="vbar-lbl">'+escapeHtml(r.shortLabel || r.label)+foot+'</span></div>';
         }).join('')+
         '</div></div>';
     }
@@ -1778,6 +2040,24 @@
           '<div class="analytics-row"><span class="ak">Last 7 days · net (after salary share)</span><span class="av">'+money(net7sum)+'</span></div>'+
           '<div class="analytics-row"><span class="ak">Salary load</span><span class="av">'+money(salTotal)+'/mo · '+money(dailySalShare)+'/day deducted</span></div>';
       }
+
+      var moRanges = lastThreeCalendarMonthRanges();
+      var menuMap3 = {};
+      (sync.menu_items || []).forEach(function(m){ menuMap3[m.id] = m; });
+      var rev3 = moRanges.map(function(rg){
+        var v = orders.filter(function(o){
+          return o.status === 'PAID' && (o.created_at_epoch_millis || 0) >= rg.start && (o.created_at_epoch_millis || 0) < rg.end;
+        }).reduce(function(s, o){ return s + (o.total_cents || 0); }, 0);
+        var cnt = orders.filter(function(o){
+          return o.status === 'PAID' && (o.created_at_epoch_millis || 0) >= rg.start && (o.created_at_epoch_millis || 0) < rg.end;
+        }).length;
+        var foot = money(v) + ' · ' + cnt + ' paid' + (rg.isMonthToDate ? ' · MTD' : '');
+        return { label: rg.label, shortLabel: rg.shortLabel, v: v, display: money(v), footer: foot };
+      });
+      var max3 = rev3.reduce(function(m, r){ return Math.max(m, r.v); }, 0);
+      renderVBarChart('rep-vbar-revenue-3mo', rev3, max3, '', 'vbar-chart--wide');
+      var topEl = $('rep-top-items-3mo');
+      if (topEl) topEl.innerHTML = renderTopItemsThreeMonthsHtml(orders, menuMap3, moRanges);
     }
 
     function isoDateLocal(d){
@@ -1797,6 +2077,70 @@
       var start = new Date(end.getTime());
       start.setDate(start.getDate() - 30);
       return { from: start.getTime(), toExc: end.getTime() };
+    }
+    function lastThreeCalendarMonthRanges(){
+      var now = new Date();
+      var y = now.getFullYear();
+      var mo = now.getMonth();
+      var tomorrow = new Date(y, mo, now.getDate() + 1, 0, 0, 0, 0).getTime();
+      var out = [];
+      for (var k = 2; k >= 0; k--) {
+        var anchor = new Date(y, mo - k, 1);
+        var yy = anchor.getFullYear();
+        var mm = anchor.getMonth();
+        var start = new Date(yy, mm, 1, 0, 0, 0, 0).getTime();
+        var endFull = new Date(yy, mm + 1, 1, 0, 0, 0, 0).getTime();
+        var isCur = k === 0;
+        var end = isCur ? Math.min(endFull, tomorrow) : endFull;
+        var d0 = new Date(yy, mm, 1);
+        out.push({
+          start: start,
+          end: end,
+          label: d0.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) + (isCur ? ' (to date)' : ''),
+          shortLabel: d0.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
+          isMonthToDate: isCur
+        });
+      }
+      return out;
+    }
+    function renderTopItemsThreeMonthsHtml(orders, menuMap, moRanges){
+      function topForRange(start, endExc, n){
+        var q = {};
+        orders.forEach(function(o){
+          if (o.status !== 'PAID') return;
+          var ts = o.created_at_epoch_millis || 0;
+          if (ts < start || ts >= endExc) return;
+          (o.lines || []).forEach(function(ln){
+            var id = ln.menu_item_id;
+            var add = ln.quantity || 0;
+            q[id] = (q[id] || 0) + add;
+          });
+        });
+        return Object.keys(q).map(function(k){
+          var id = +k;
+          var nm = (menuMap[id] && menuMap[id].name) ? String(menuMap[id].name) : ('Item #' + id);
+          return { name: nm, qty: q[k] };
+        }).sort(function(a, b){ return b.qty - a.qty; }).slice(0, n || 8);
+      }
+      var cols = moRanges.map(function(rg){
+        var tops = topForRange(rg.start, rg.end, 8);
+        var rev = orders.filter(function(o){
+          return o.status === 'PAID' && (o.created_at_epoch_millis || 0) >= rg.start && (o.created_at_epoch_millis || 0) < rg.end;
+        }).reduce(function(s, o){ return s + (o.total_cents || 0); }, 0);
+        var paidN = orders.filter(function(o){
+          return o.status === 'PAID' && (o.created_at_epoch_millis || 0) >= rg.start && (o.created_at_epoch_millis || 0) < rg.end;
+        }).length;
+        var itemsHtml = tops.length ? tops.map(function(t, idx){
+          return '<div class="rep-top-item"><span class="rep-top-rank" aria-hidden="true">'+(idx+1)+'</span><span class="rep-top-name" title="'+escapeAttr(t.name)+'">'+escapeHtml(t.name)+'</span><span class="rep-top-qty">×'+t.qty+'</span></div>';
+        }).join('') : '<p class="chart-empty" style="margin:0;padding:10px 0">No line items on paid tickets.</p>';
+        var mtd = rg.isMonthToDate ? ' <span class="rep-mtd-badge">to date</span>' : '';
+        return '<div class="rep-top-col">'+
+          '<h4 class="rep-top-month">'+escapeHtml(rg.shortLabel)+mtd+'</h4>'+
+          '<p class="rep-top-meta">'+money(rev)+' · '+paidN+' paid ticket'+(paidN === 1 ? '' : 's')+'</p>'+
+          '<p class="rep-top-h">Top dishes by quantity (paid)</p>'+
+          '<div class="rep-top-list">'+itemsHtml+'</div></div>';
+      }).join('');
+      return '<div class="rep-top-3mo-grid">'+cols+'</div>';
     }
     function parseDateInputLocal(iso){
       if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
@@ -1820,6 +2164,31 @@
     }
     function formatRangeLabel(fromMs, toExc){
       return isoDateLocal(new Date(fromMs)) + ' → ' + isoDateLocal(new Date(toExc - 1));
+    }
+    function applyReportsRangeMode(rootEl, mode){
+      if (!rootEl) return;
+      var panel = rootEl.querySelector('[data-rep-custom-dates]');
+      var sel = rootEl.querySelector('[data-rep-range-mode]');
+      var df = rootEl.querySelector('[data-rep-date-from]');
+      var dt = rootEl.querySelector('[data-rep-date-to]');
+      if (sel && (mode === 'this-month' || mode === 'last30' || mode === 'custom')) {
+        sel.value = mode;
+      }
+      if (mode === 'custom') {
+        if (panel) panel.classList.remove('hidden');
+      } else {
+        if (panel) panel.classList.add('hidden');
+        if (mode === 'this-month') {
+          var r = thisMonthBoundsLocal();
+          if (df) df.value = isoDateLocal(new Date(r.from));
+          if (dt) dt.value = isoDateLocal(new Date(r.toExc - 1));
+        } else if (mode === 'last30') {
+          var r2 = last30DayBoundsLocal();
+          if (df) df.value = isoDateLocal(new Date(r2.from));
+          if (dt) dt.value = isoDateLocal(new Date(r2.toExc - 1));
+        }
+      }
+      updateReportRangeSummary(rootEl);
     }
     function updateReportRangeSummary(rootEl){
       if (!sync || !rootEl) return;
@@ -1860,29 +2229,17 @@
     }
     function wireReportRangeControls(rootEl){
       if (!rootEl) return;
-      var b1 = rootEl.querySelector('[data-rep-preset="this-month"]');
-      var b2 = rootEl.querySelector('[data-rep-preset="last30"]');
       var b3 = rootEl.querySelector('[data-rep-apply]');
       var df = rootEl.querySelector('[data-rep-date-from]');
       var dt = rootEl.querySelector('[data-rep-date-to]');
       var bf = rootEl.querySelector('[data-rep-open-from]');
       var bt = rootEl.querySelector('[data-rep-open-to]');
+      var modeSel = rootEl.querySelector('[data-rep-range-mode]');
       if (bf && df) bf.onclick = function(){ tryShowNativeDatePicker(df); };
       if (bt && dt) bt.onclick = function(){ tryShowNativeDatePicker(dt); };
-      if (b1) {
-        b1.onclick = function(){
-          var r = thisMonthBoundsLocal();
-          if (df) df.value = isoDateLocal(new Date(r.from));
-          if (dt) dt.value = isoDateLocal(new Date(r.toExc - 1));
-          updateReportRangeSummary(rootEl);
-        };
-      }
-      if (b2) {
-        b2.onclick = function(){
-          var r = last30DayBoundsLocal();
-          if (df) df.value = isoDateLocal(new Date(r.from));
-          if (dt) dt.value = isoDateLocal(new Date(r.toExc - 1));
-          updateReportRangeSummary(rootEl);
+      if (modeSel) {
+        modeSel.onchange = function(){
+          applyReportsRangeMode(rootEl, modeSel.value);
         };
       }
       if (b3) b3.onclick = function(){ updateReportRangeSummary(rootEl); };
@@ -1924,6 +2281,12 @@
       var map = { OPEN: 'Open', IN_KITCHEN: 'In kitchen', READY: 'Ready', SERVED: 'Served', PAID: 'Paid', CANCELLED: 'Cancelled' };
       return map[st] || st || '—';
     }
+    function kitchenLinePretty(st){
+      if (st === 'QUEUED') return 'Queued';
+      if (st === 'COOKING') return 'Cooking';
+      if (st === 'READY') return 'Ready';
+      return st || '—';
+    }
     function orderTableLabel(tableId){
       if (tableId == null || tableId === '') return '—';
       var t = (sync.tables||[]).find(function(x){ return x.id === tableId; });
@@ -1955,6 +2318,60 @@
           after();
         }
       });
+    }
+
+    function openKitchenOrderMenu(oid){
+      kitchenMenuOrderId = oid;
+      if ($('kitchenActionsTitle')) $('kitchenActionsTitle').textContent = 'Order #' + oid;
+      var kb = $('kitchenActionsBackdrop');
+      if (kb) kb.classList.add('open');
+    }
+    function closeKitchenOrderMenu(){
+      kitchenMenuOrderId = null;
+      var kb = $('kitchenActionsBackdrop');
+      if (kb) kb.classList.remove('open');
+    }
+
+    function printOrderBillWeb(orderId){
+      if (!sync) return;
+      var o = (sync.orders||[]).find(function(x){ return x.id === orderId; });
+      if (!o) {
+        alert('Could not load order for printing');
+        return;
+      }
+      var s = sync.settings || {};
+      var vn = escapeHtml(s.venue_name || 'Restaurant');
+      var menuMap = {};
+      (sync.menu_items || []).forEach(function(m){ menuMap[m.id] = m; });
+      var sub = 0;
+      var rows = (o.lines || []).map(function(line){
+        var mi = menuMap[line.menu_item_id] || {};
+        var unit = line.unit_price_cents != null ? line.unit_price_cents : (mi.price || 0);
+        var q = line.quantity || 0;
+        sub += unit * q;
+        var nm = escapeHtml(mi.name || ('Item #' + line.menu_item_id));
+        return '<tr><td>' + q + '× ' + nm + '</td><td style="text-align:right">' + money(unit * q) + '</td></tr>';
+      }).join('');
+      var tot = o.total_cents != null ? o.total_cents : sub;
+      var html =
+        '<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Bill</title>' +
+        '<style>body{font-family:system-ui,sans-serif;padding:20px;max-width:440px} h1{font-size:1.2rem;margin:0} table{width:100%;border-collapse:collapse;margin-top:12px} td{padding:6px 0;border-bottom:1px solid #eee}</style></head><body>' +
+        '<h1>' + vn + '</h1><p>Order #' + orderId + '</p><table>' + rows + '</table>' +
+        '<p style="margin-top:16px;font-weight:700">Total ' + money(tot) + '</p>' +
+        '<p style="font-size:0.82rem;opacity:0.75">Printed from Restaurant CRM · tax &amp; service follow venue settings on POS.</p></body></html>';
+      var w = window.open('', '_blank');
+      if (!w) {
+        alert('Allow pop-ups to print the bill.');
+        return;
+      }
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      setTimeout(function(){
+        try { w.print(); } catch (e) {}
+        try { w.close(); } catch (e2) {}
+      }, 300);
     }
 
     function renderPos(){
@@ -2053,26 +2470,78 @@
 
     function renderKitchen(){
       if (!sync) return;
-      var menuMap = {}; (sync.menu_items||[]).forEach(function(m){ menuMap[m.id]=m; });
-      var orders = (sync.orders||[]).filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status)<0; });
+      var menuMap = {};
+      (sync.menu_items || []).forEach(function(m){ menuMap[m.id] = m; });
+      var orders = (sync.orders || []).filter(function(o){
+        return ['PAID', 'CANCELLED', 'SERVED'].indexOf(o.status) < 0;
+      });
       var html = '';
       orders.forEach(function(o){
-        html += '<div class="card k"><strong>Order #'+o.id+' · '+o.status+'</strong>';
-        (o.lines||[]).forEach(function(line){
+        var head =
+          '<div class="kitchen-card-head" role="button" tabindex="0" data-kitchen-open="' + o.id + '">' +
+          '<strong>Order ID: ' + o.id + ' · ' + escapeHtml(orderStatusPretty(o.status)) + ' · Table ' + escapeHtml(orderTableLabel(o.table_id)) + '</strong></div>' +
+          '<button type="button" class="btn-text kitchen-act-btn" data-kitchen-menu="' + o.id + '">Order actions</button>';
+        var lines = (o.lines || []).map(function(line){
           var mi = menuMap[line.menu_item_id] || {};
-          var nm = mi.name || ('Item #'+line.menu_item_id);
+          var nm = mi.name || ('Item #' + line.menu_item_id);
           var imgSrc = menuItemDisplayImageUrl(mi);
-          html += '<div style="margin-top:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,.35);display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:10px" class="kline" data-lid="'+line.id+'" data-oid="'+o.id+'">'+
-            '<div class="kline-inner" style="flex:1;min-width:0">'+
-            '<img class="kline-thumb" src="'+escapeHtml(imgSrc)+'" alt="" loading="lazy" draggable="false"/>'+
-            '<span style="min-width:0">'+escapeHtml(nm)+' × '+line.quantity+'</span></div>'+
-            '<span style="font-size:0.8rem;font-weight:700;flex-shrink:0">'+line.kitchen_status+' →</span></div>';
-        });
-        html += '</div>';
+          return (
+            '<div style="margin-top:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,.35);display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:10px" class="kline" data-lid="' + line.id + '" data-oid="' + o.id + '">' +
+            '<div class="kline-inner" style="flex:1;min-width:0">' +
+            '<img class="kline-thumb" src="' + escapeHtml(imgSrc) + '" alt="" loading="lazy" draggable="false"/>' +
+            '<span style="min-width:0">' + escapeHtml(nm) + ' × ' + line.quantity + '</span></div>' +
+            '<span style="font-size:0.8rem;font-weight:700;flex-shrink:0;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.5)">' + escapeHtml(kitchenLinePretty(line.kitchen_status)) + '</span></div>'
+          );
+        }).join('');
+        html +=
+          '<div class="card k kitchen-card" data-kitchen-oid="' + o.id + '">' +
+          head +
+          lines +
+          '<p class="hint" style="margin:10px 0 0;font-size:0.8rem">Tap a line to advance: Queued → Cooking → Ready</p>' +
+          '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button type="button" class="btn btn-outline" data-kitchen-close="' + o.id + '" style="flex:1;min-width:8rem">Close order</button>' +
+          '<button type="button" class="btn btn-primary" data-kitchen-print="' + o.id + '" style="flex:1;min-width:8rem">Print bill</button>' +
+          '</div></div>';
       });
       $('kitchen-body').innerHTML = html || '<p class="hint">No tickets in the kitchen queue.</p>';
       $('kitchen-body').querySelectorAll('.kline').forEach(function(row){
-        row.onclick = function(){ advanceLine(+row.getAttribute('data-lid'), +row.getAttribute('data-oid')); };
+        row.onclick = function(e){
+          e.stopPropagation();
+          advanceLine(+row.getAttribute('data-lid'), +row.getAttribute('data-oid'));
+        };
+      });
+      $('kitchen-body').querySelectorAll('[data-kitchen-open]').forEach(function(el){
+        el.onclick = function(e){
+          e.stopPropagation();
+          openOrderHistDetail(+el.getAttribute('data-kitchen-open'));
+        };
+        el.onkeydown = function(e){
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openOrderHistDetail(+el.getAttribute('data-kitchen-open'));
+          }
+        };
+      });
+      $('kitchen-body').querySelectorAll('[data-kitchen-menu]').forEach(function(btn){
+        btn.onclick = function(e){
+          e.stopPropagation();
+          openKitchenOrderMenu(+btn.getAttribute('data-kitchen-menu'));
+        };
+      });
+      $('kitchen-body').querySelectorAll('[data-kitchen-close]').forEach(function(btn){
+        btn.onclick = function(e){
+          e.stopPropagation();
+          var oid = +btn.getAttribute('data-kitchen-close');
+          patchOrderLifecycle(oid, 'SERVED', function(ok){
+            if (ok) loadSync().then(function(){ renderKitchen(); });
+          });
+        };
+      });
+      $('kitchen-body').querySelectorAll('[data-kitchen-print]').forEach(function(btn){
+        btn.onclick = function(e){
+          e.stopPropagation();
+          printOrderBillWeb(+btn.getAttribute('data-kitchen-print'));
+        };
       });
     }
 
@@ -2197,20 +2666,45 @@
 
     function renderSettings(el){
       var s = (sync&&sync.settings)||{};
+      var f = parseModules(s.modules_json||'');
+      function mt(on){ return on ? ' checked' : ''; }
       el.innerHTML = '<label>Venue name</label><input id="set-name" value="'+escapeHtml(s.venue_name||'')+'"/>'+
         '<label>Tax %</label><input id="set-tax" type="number" step="0.1" value="'+(s.tax_percent!=null?s.tax_percent:5)+'"/>'+
         '<label>Service charge %</label><input id="set-svc" type="number" step="0.1" value="'+(s.service_charge_percent!=null?s.service_charge_percent:0)+'"/>'+
         '<label>Menu categories (one per line)</label><p class="hint" style="margin:0 0 6px;font-size:0.8rem">Same as the Android app Global settings. Used for the category list when you add menu items on the web.</p>'+
         '<textarea id="set-menu-cats" rows="6" style="width:100%;max-width:100%;box-sizing:border-box;resize:vertical;font:inherit;padding:8px;border-radius:8px;border:1px solid var(--outline-variant)">'+escapeHtml(menuCategoriesMultilineFromPipe(s.menu_categories||''))+'</textarea>'+
+        '<div class="settings-mod-list">'+
+        '<h4>Restaurant modules</h4>'+
+        '<p class="hint">Turn off what you do not use — same options as the Android app. The Kitchen tab, Tables sidebar item, and Operations tiles refresh after you save. Reports, Order history, and Global settings always stay available.</p>'+
+        '<div class="settings-mod-row"><span id="lbl-mod-kitchen">Kitchen (bottom bar)</span><input type="checkbox" id="set-mod-kitchen" aria-labelledby="lbl-mod-kitchen"'+mt(f.kitchen)+'/></div>'+
+        '<div class="settings-mod-row"><span id="lbl-mod-qrmenu">Customer QR menu</span><input type="checkbox" id="set-mod-qrmenu" aria-labelledby="lbl-mod-qrmenu"'+mt(f.qrMenu)+'/></div>'+
+        '<div class="settings-mod-row"><span id="lbl-mod-tables">Tables &amp; reservations</span><input type="checkbox" id="set-mod-tables" aria-labelledby="lbl-mod-tables"'+mt(f.tables)+'/></div>'+
+        '<div class="settings-mod-row"><span id="lbl-mod-inventory">Inventory</span><input type="checkbox" id="set-mod-inventory" aria-labelledby="lbl-mod-inventory"'+mt(f.inventory)+'/></div>'+
+        '<div class="settings-mod-row"><span id="lbl-mod-staff">Staff</span><input type="checkbox" id="set-mod-staff" aria-labelledby="lbl-mod-staff"'+mt(f.staff)+'/></div>'+
+        '<div class="settings-mod-row"><span id="lbl-mod-expenses">Expenses</span><input type="checkbox" id="set-mod-expenses" aria-labelledby="lbl-mod-expenses"'+mt(f.expenses)+'/></div>'+
+        '</div>'+
         '<button type="button" class="btn btn-primary" id="set-save" style="margin-top:14px">Save</button>';
       $('set-save').onclick = function(){
+        var modulesPayload = {
+          kitchen: !!$('set-mod-kitchen') && $('set-mod-kitchen').checked,
+          qrMenu: !!$('set-mod-qrmenu') && $('set-mod-qrmenu').checked,
+          tables: !!$('set-mod-tables') && $('set-mod-tables').checked,
+          inventory: !!$('set-mod-inventory') && $('set-mod-inventory').checked,
+          staff: !!$('set-mod-staff') && $('set-mod-staff').checked,
+          expenses: !!$('set-mod-expenses') && $('set-mod-expenses').checked,
+        };
         api('PUT','/settings/venue/',{
           venue_name:$('set-name').value,
           tax_percent:parseFloat($('set-tax').value)||0,
           service_charge_percent:parseFloat($('set-svc').value)||0,
-          menu_categories:menuCategoriesPipeFromMultiline($('set-menu-cats').value)
+          menu_categories:menuCategoriesPipeFromMultiline($('set-menu-cats').value),
+          modules_json: JSON.stringify(modulesPayload),
         }).then(function(r){
-          if(r.ok) loadSync().then(function(){ alert('Saved'); });
+          if(r.ok) loadSync().then(function(){
+            applyModulesNav();
+            if ($('page-more') && !$('page-more').classList.contains('hidden')) renderOpsCards();
+            alert('Saved');
+          });
           else alert('Save failed');
         });
       };
@@ -2281,6 +2775,215 @@
           });
         };
       });
+    }
+    function getTablesRenderTarget(){
+      var pt = $('page-tables');
+      if (pt && !pt.classList.contains('hidden') && $('tables-body')) return $('tables-body');
+      return $('moreContent');
+    }
+    function reloadTablesView(){
+      var tgt = getTablesRenderTarget();
+      if (tgt) renderTables(tgt);
+    }
+    function renderTables(el){
+      if (!sync) return;
+      function localDtVal(ms){
+        var d = new Date(ms);
+        function p(n){ return (n<10?'0':'')+n; }
+        return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes());
+      }
+      function parseLocalDt(s){
+        if (!s) return null;
+        var t = new Date(s).getTime();
+        return isNaN(t)?null:t;
+      }
+      function lblTable(id){
+        if (id==null) return 'Table not assigned yet';
+        var t = (sync.tables||[]).find(function(x){ return x.id===id; });
+        return t ? (t.section+' · '+t.label) : ('#'+id);
+      }
+      var tables = (sync.tables||[]).slice().sort(function(a,b){
+        var sa = (a.section||'')+a.label, sb = (b.section||'')+b.label;
+        return sa.localeCompare(sb);
+      });
+      var bySec = {};
+      tables.forEach(function(t){
+        var s = t.section || 'Main';
+        if (!bySec[s]) bySec[s] = [];
+        bySec[s].push(t);
+      });
+      function tblStatusHuman(st){
+        var m = { FREE: 'Free', OCCUPIED: 'Occupied', NEEDS_CLEAN: 'Needs clean' };
+        return m[st] || st;
+      }
+      function nextTableStatus(st){
+        var order = ['FREE','OCCUPIED','NEEDS_CLEAN'];
+        var cur = String(st || 'FREE').toUpperCase();
+        var i = order.indexOf(cur);
+        if (i < 0) return 'FREE';
+        return order[(i + 1) % order.length];
+      }
+      var secHtml = Object.keys(bySec).sort().map(function(sec){
+        var chips = bySec[sec].map(function(t){
+          var st = t.status || 'FREE';
+          var mod = st === 'OCCUPIED' ? 'occupied' : (st === 'NEEDS_CLEAN' ? 'needs' : 'free');
+          return '<div class="tbl-floor-cell tbl-floor--'+mod+'">'+
+            '<strong>'+escapeHtml(t.label)+'</strong>'+
+            '<button type="button" class="btn btn-secondary btn-sm tbl-st-cycle" data-tbl-id="'+t.id+'" data-tbl-cur="'+escapeAttr(st)+'" title="Tap to cycle: Free → Occupied → Needs clean → Free" style="margin-top:8px;width:100%;max-width:12rem;text-align:center;font-weight:700">'+
+            escapeHtml(tblStatusHuman(st))+'</button>'+
+            '<span class="hint" style="display:block;margin-top:4px;font-size:0.65rem;text-align:center">Tap for next status</span>'+
+            '<button type="button" class="btn-text" data-tbl-del="'+t.id+'" style="margin-top:6px;font-size:0.72rem;color:#b3261e">Remove</button></div>';
+        }).join('');
+        return '<div style="margin-bottom:16px"><h4 style="margin:0 0 8px;font-size:0.95rem">'+escapeHtml(sec)+'</h4>'+
+          '<div class="tbl-floor-row">'+chips+'</div></div>';
+      }).join('');
+      var resv = (sync.reservations||[]).slice().sort(function(a,b){
+        return (a.start_epoch_millis||0)-(b.start_epoch_millis||0);
+      });
+      var stOpts = ['PENDING','CONFIRMED','SEATED','COMPLETED','CANCELLED','NO_SHOW'];
+      function resStatusLbl(s){
+        var m={PENDING:'Pending',CONFIRMED:'Confirmed',SEATED:'Seated',COMPLETED:'Done',CANCELLED:'Cancelled',NO_SHOW:'No-show'};
+        return m[s]||s;
+      }
+      var resHtml = resv.map(function(r){
+        var stSel = '<select data-resv-st="'+r.id+'" style="margin-top:6px;max-width:100%">'+
+          stOpts.map(function(st){
+            return '<option value="'+st+'"'+(r.status===st?' selected':'')+'>'+resStatusLbl(st)+'</option>';
+          }).join('')+'</select>';
+        var df = new Date(r.start_epoch_millis||0).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+        var dt = new Date(r.end_epoch_millis||0).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+        return '<div class="ops-card-block" style="border:1px solid var(--outline-variant);border-radius:var(--r-md);padding:14px;margin-bottom:10px;background:var(--surface)">'+
+          '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">'+
+          '<div style="flex:1;min-width:0"><strong>'+escapeHtml(r.guest_name||'')+'</strong>'+
+          ' <span class="hint">· '+(r.party_size||0)+' guests · '+escapeHtml(lblTable(r.table_id))+'</span>'+
+          '<p style="margin:8px 0 0;font-size:0.82rem">'+escapeHtml(df)+' → '+escapeHtml(dt)+'</p>'+
+          (r.notes?'<p style="margin:6px 0 0;font-size:0.8rem;opacity:0.85">'+escapeHtml(r.notes)+'</p>':'')+
+          stSel+'</div>'+
+          '<button type="button" class="btn-text" data-resv-del="'+r.id+'" style="color:#b3261e">Remove</button></div></div>';
+      }).join('');
+      var tblOpts = '<option value="">No table chosen yet — assign later</option>'+
+        tables.map(function(t){
+          return '<option value="'+t.id+'">'+escapeHtml(t.section+' · '+t.label)+'</option>';
+        }).join('');
+      var startDef = localDtVal(Date.now()+3600000);
+      el.innerHTML =
+        '<p class="hint">Your venue can have <strong>any number of tables</strong>: tap <strong>+</strong> by Floor to add labels that match your layout (numbers, VIP, patio…), group by section, then set status and reservations below. Same list syncs to the Android app.</p>'+
+        '<div style="display:grid;gap:20px;grid-template-columns:1fr;">'+
+        '<div class="chart-card" style="padding:16px">'+
+        '<div class="tbl-floor-card-hd">'+
+        '<h3 class="chart-card-title" style="margin-top:0">Floor</h3>'+
+        '<button type="button" class="tbl-add-toggle" id="tbl-add-toggle" aria-label="Add table" aria-expanded="false" title="Add table">+</button></div>'+
+        '<div id="tbl-add-panel" class="tbl-add-panel" hidden>'+
+        '<p style="margin:0 0 8px;font-weight:700;font-size:0.9rem">Add a table</p>'+
+        '<p class="hint" style="margin:0 0 10px;font-size:0.8rem">Small café or large dining room — add only what you use.</p>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">'+
+        '<label style="flex:1;min-width:7rem">Label<br/><input id="tbl-new-label" placeholder="e.g. 12, A3, VIP"/></label>'+
+        '<label style="flex:1;min-width:7rem">Section<br/><input id="tbl-new-sec" value="Main" placeholder="Main, Patio…"/></label>'+
+        '<button type="button" class="btn btn-primary btn-sm" id="tbl-add-btn">Add table</button></div></div>'+
+        (secHtml || '<p class="hint" style="margin-top:4px">No tables yet — tap <strong>+</strong> next to Floor to add one, or use <strong>Load sample tables &amp; menu</strong> on the sign-in screen for a starter set.</p>')+'</div>'+
+        '<div class="chart-card resv-form" style="padding:16px"><h3 class="chart-card-title" style="margin-top:0">New reservation</h3>'+
+        '<label for="resv-guest">Guest name</label><input id="resv-guest" placeholder="Name on booking"/>'+
+        '<label for="resv-phone">Phone (optional)</label><input id="resv-phone" type="tel"/>'+
+        '<label for="resv-party">Number of guests</label><input id="resv-party" type="number" min="1" value="2"/>'+
+        '<label for="resv-tbl">Which table is this for?</label><select id="resv-tbl">'+tblOpts+'</select>'+
+        '<p class="resv-tbl-help">You can leave this as “no table yet” and assign a table when guests arrive. If you already know their table, pick it from the list.</p>'+
+        '<label for="resv-start">Arrival time</label><input id="resv-start" type="datetime-local" value="'+escapeAttr(startDef)+'"/>'+
+        '<label for="resv-sit-hours">Approx. how long they may sit (hours)</label><input id="resv-sit-hours" type="number" min="1" max="12" step="1" value="3"/>'+
+        '<p class="resv-tbl-help">This is only a guide for your calendar — not a strict checkout. Pick a generous time; if guests stay longer, you can edit the booking later.</p>'+
+        '<label for="resv-notes">Notes</label><input id="resv-notes" placeholder="Occasion, dietary, etc."/>'+
+        '<button type="button" class="btn btn-primary" id="resv-add" style="margin-top:12px">Save reservation</button></div>'+
+        '<div class="chart-card" style="padding:16px"><h3 class="chart-card-title" style="margin-top:0">Upcoming &amp; recent</h3>'+
+        (resHtml || '<p class="hint">No reservations yet.</p>')+'</div></div>';
+      el.querySelectorAll('.tbl-st-cycle').forEach(function(btn){
+        btn.onclick = function(){
+          var id = +btn.getAttribute('data-tbl-id');
+          var cur = btn.getAttribute('data-tbl-cur') || 'FREE';
+          var nxt = nextTableStatus(cur);
+          api('PATCH','/tables/'+id+'/',{ status: nxt }).then(function(){
+            loadSync().then(function(){ reloadTablesView(); });
+          });
+        };
+      });
+      var tPan = $('tbl-add-panel');
+      var tTgl = $('tbl-add-toggle');
+      if (tTgl && tPan) {
+        tTgl.onclick = function(){
+          var open = tPan.hasAttribute('hidden');
+          if (open) {
+            tPan.removeAttribute('hidden');
+            tTgl.setAttribute('aria-expanded', 'true');
+          } else {
+            tPan.setAttribute('hidden', '');
+            tTgl.setAttribute('aria-expanded', 'false');
+          }
+        };
+      }
+      var tadd = $('tbl-add-btn');
+      if (tadd) tadd.onclick = function(){
+        var lab = ($('tbl-new-label').value||'').trim();
+        var sec = ($('tbl-new-sec').value||'Main').trim() || 'Main';
+        if (!lab) { alert('Enter a table label (number or name).'); return; }
+        api('POST','/tables/', { label: lab, section: sec, status: 'FREE' }).then(function(r){
+          if (r.ok) {
+            if ($('tbl-new-label')) $('tbl-new-label').value = '';
+            if (tPan) tPan.setAttribute('hidden', '');
+            if (tTgl) tTgl.setAttribute('aria-expanded', 'false');
+            loadSync().then(function(){ reloadTablesView(); });
+          } else {
+            alert('Could not add table. Check your connection and try again.');
+          }
+        });
+      };
+      el.querySelectorAll('[data-tbl-del]').forEach(function(btn){
+        btn.onclick = function(){
+          var id = +btn.getAttribute('data-tbl-del');
+          if (!confirm('Remove this table from your floor? Reservations that pointed here will show as “any table”; past orders stay in history.')) return;
+          api('DELETE','/tables/'+id+'/').then(function(r){
+            if (r.ok) loadSync().then(function(){ reloadTablesView(); });
+            else alert('Could not remove (try again when online).');
+          });
+        };
+      });
+      el.querySelectorAll('[data-resv-st]').forEach(function(sel){
+        sel.addEventListener('change', function(){
+          var id = +sel.getAttribute('data-resv-st');
+          api('PATCH','/reservations/'+id+'/',{ status: sel.value }).then(function(){
+            loadSync().then(function(){ reloadTablesView(); });
+          });
+        });
+      });
+      el.querySelectorAll('[data-resv-del]').forEach(function(btn){
+        btn.onclick = function(){
+          var id = +btn.getAttribute('data-resv-del');
+          if (!confirm('Remove this reservation?')) return;
+          api('DELETE','/reservations/'+id+'/').then(function(r){
+            if(r.ok) loadSync().then(function(){ reloadTablesView(); });
+            else alert('Delete failed');
+          });
+        };
+      });
+      var ra = $('resv-add');
+      if (ra) ra.onclick = function(){
+        var gn = ($('resv-guest').value||'').trim();
+        if (!gn) { alert('Enter guest name'); return; }
+        var ps = parseInt(String($('resv-party').value||'2'),10) || 2;
+        var st = parseLocalDt($('resv-start').value);
+        var sitH = parseInt(String($('resv-sit-hours') && $('resv-sit-hours').value || '3'), 10);
+        if (isNaN(sitH) || sitH < 1) sitH = 1;
+        if (sitH > 12) sitH = 12;
+        if (st==null){ alert('Pick a valid arrival time.'); return; }
+        var en = st + sitH * 3600000;
+        var body = { guest_name: gn, phone: ($('resv-phone').value||'').trim(), party_size: Math.max(1,ps), start_epoch_millis: st, end_epoch_millis: en, status: 'PENDING' };
+        var tv = $('resv-tbl') && $('resv-tbl').value;
+        var tid = tv ? parseInt(tv,10) : null;
+        body.table_id = tid != null && !isNaN(tid) ? tid : null;
+        var note = ($('resv-notes').value||'').trim();
+        if (note) body.notes = note;
+        api('POST','/reservations/', body).then(function(r){
+          if(r.ok) loadSync().then(function(){ reloadTablesView(); dashStats(); });
+          else alert('Could not create reservation');
+        });
+      };
     }
     function renderExpenses(el){
       if (!sync) return;
@@ -2518,12 +3221,19 @@
       }
       dashStats();
       el.innerHTML =
+        '<div class="pad-reports">'+
         '<p class="hint reports-lede">Analytics use the same venue rules as the Dashboard: net figures subtract logged expenses and one day’s share of total monthly salaries (÷30).</p>'+
         '<p class="dash-metrics-title">Orders and income by date range</p>'+
         '<div class="chart-card reports-range-card">'+
         '<div class="rep-range-row">'+
-        '<button type="button" class="btn btn-secondary btn-sm" data-rep-preset="this-month">This month</button>'+
-        '<button type="button" class="btn btn-secondary btn-sm" data-rep-preset="last30">Last 30 days</button></div>'+
+        '<label class="rep-date-lbl" for="rep-range-mode">Date range<span class="rep-date-row">'+
+        '<select id="rep-range-mode" data-rep-range-mode class="rep-range-mode-select" aria-label="Report date range">'+
+        '<option value="this-month">This month</option>'+
+        '<option value="last30">Last 30 days</option>'+
+        '<option value="custom">Custom</option>'+
+        '</select></span></label></div>'+
+        '<p class="hint rep-range-hint">Choose a preset or <strong>Custom</strong> to pick From and To dates yourself.</p>'+
+        '<div data-rep-custom-dates class="hidden">'+
         '<div class="rep-range-row">'+
         '<label class="rep-date-lbl">From<span class="rep-date-row">'+
         '<input type="date" data-rep-date-from class="rep-date-inp" aria-label="From date"/>'+
@@ -2534,10 +3244,21 @@
         '<button type="button" class="btn btn-secondary btn-sm rep-cal-btn" data-rep-open-to title="Open calendar" aria-label="Open calendar for To date">'+
         '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></button></span></label>'+
         '<button type="button" class="btn btn-primary btn-sm" data-rep-apply>Apply range</button></div>'+
-        '<p class="hint rep-range-hint">Tap a date field or the calendar button to pick in the browser date picker. Orders received = every ticket created in the range. Paid income = sum of <strong>PAID</strong> orders only.</p>'+
+        '<p class="hint rep-range-hint" style="margin-top:0">Tap a date field or the calendar icon, then <strong>Apply range</strong>. Orders received = every ticket created in the range. Paid income = sum of <strong>PAID</strong> orders only.</p>'+
+        '</div>'+
         '<div data-rep-summary class="rep-range-summary-grid"></div></div>'+
         '<p class="dash-metrics-title">Today · headline KPIs</p>'+
         '<div id="rep-stats-grid" class="dash-stats-grid"></div>'+
+        '<p class="dash-metrics-title">Last 3 calendar months</p>'+
+        '<p class="hint reports-3mo-lede">Each bar is <strong>paid</strong> sales for that calendar month (this month only counts through today). The cards list your <strong>highest-selling dishes by quantity</strong> on paid tickets so you can compare what moves each month.</p>'+
+        '<div class="reports-chart-grid">'+
+        '<div class="chart-card reports-chart-span">'+
+        '<h3 class="chart-card-title">Paid revenue · last 3 months</h3>'+
+        '<div id="rep-vbar-revenue-3mo" class="chart-body chart-body--tall"></div></div>'+
+        '<div class="chart-card reports-chart-span">'+
+        '<h3 class="chart-card-title">Top sold dishes · by month</h3>'+
+        '<div id="rep-top-items-3mo" class="chart-body chart-body--tall"></div></div>'+
+        '</div>'+
         '<p class="dash-metrics-title">Trend charts</p>'+
         '<div class="reports-chart-grid">'+
         '<div class="chart-card reports-chart-span">'+
@@ -2562,7 +3283,7 @@
         '<div class="chart-card reports-chart-span">'+
         '<h3 class="chart-card-title">Period totals</h3>'+
         '<div class="analytics-lines" id="rep-analytics-summary"></div></div>'+
-        '</div>';
+        '</div></div>';
       var t0 = startToday();
       var ord = sync.orders || [];
       var exp = sync.expenses || [];
@@ -2581,13 +3302,8 @@
           '<div class="stat s3"><div class="lbl">Total orders today</div><div class="val">'+ordersToday+'</div></div>';
       }
       populateReportsCharts();
-      var rInit = thisMonthBoundsLocal();
-      var dfi = el.querySelector('[data-rep-date-from]');
-      var dti = el.querySelector('[data-rep-date-to]');
-      if (dfi) dfi.value = isoDateLocal(new Date(rInit.from));
-      if (dti) dti.value = isoDateLocal(new Date(rInit.toExc - 1));
       wireReportRangeControls(el);
-      updateReportRangeSummary(el);
+      applyReportsRangeMode(el, 'this-month');
     }
     function closeOrderHistModals(){
       orderHistDetailId = null;
@@ -2634,7 +3350,11 @@
       if ((st === 'IN_KITCHEN' || st === 'READY') && prefix === 'ohd') {
         btns += '<button type="button" class="btn btn-secondary btn-sm" data-'+prefix+'-act="served" data-oid="'+id+'">Mark served</button>';
       }
-      return btns ? '<div class="oh-actions" style="margin-top:10px">'+btns+'</div>' : '';
+      if (prefix !== 'ohd') {
+        btns += '<button type="button" class="btn btn-outline btn-sm" data-'+prefix+'-act="print" data-oid="'+id+'">Print bill</button>';
+      }
+      if (!btns) return '';
+      return '<div class="oh-actions" style="margin-top:10px">' + btns + '</div>';
     }
     function wireOrderHistActionClicks(root, prefix, after){
       if (!root) return;
@@ -2673,6 +3393,8 @@
                 if (after) after();
               });
             });
+          } else if (act === 'print') {
+            printOrderBillWeb(oid);
           }
         };
       });
@@ -2802,7 +3524,7 @@
       var menuMap = ohMenuMap();
       var ord = (sync.orders||[]).slice().sort(function(a,b){ return b.created_at_epoch_millis - a.created_at_epoch_millis; });
       var toolbar = '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px">'+
-        '<p class="hint" style="margin:0;flex:1;min-width:200px">Newest first. Each card lists <strong>all dishes</strong> on that ticket (same data as Kitchen / Android). Use <strong>Pay</strong>, <strong>Cancel</strong>, or <strong>Send kitchen</strong> when shown.</p>'+
+        '<p class="hint" style="margin:0;flex:1;min-width:200px">Newest first. Each card lists <strong>all dishes</strong> on that ticket (same data as Kitchen / Android). Use <strong>Pay</strong>, <strong>Cancel</strong>, <strong>Send kitchen</strong>, or <strong>Print bill</strong> when shown. Open <strong>Details</strong> for the full ticket.</p>'+
         '<button type="button" class="btn btn-secondary btn-sm" id="btnOrdersRefresh">Refresh</button></div>';
       if (!ord.length) {
         el.innerHTML = toolbar + '<p class="hint">No orders yet.</p>';
@@ -3114,12 +3836,13 @@
       var s = (parts[0] || '').toLowerCase();
       if (s === 'app') return 'dashboard';
       if (s === 'workspace') return 'more';
-      if (['dashboard', 'pos', 'kitchen', 'orders', 'reports'].indexOf(s) >= 0) return s;
+      if (['dashboard', 'pos', 'kitchen', 'orders', 'reports', 'tables'].indexOf(s) >= 0) return s;
       return 'dashboard';
     }
 
     function tabToUrl(tab){
       if (tab === 'more') return slugToWorkspacePath(currentOpsSlug);
+      if (tab === 'tables') return '/tables/';
       return '/' + tab + '/';
     }
 
@@ -3138,7 +3861,7 @@
     function segmentToTab(seg){
       if (!seg) return null;
       if (seg === 'workspace') return 'more';
-      if (['dashboard', 'pos', 'kitchen', 'orders', 'reports'].indexOf(seg) >= 0) return seg;
+      if (['dashboard', 'pos', 'kitchen', 'orders', 'reports', 'tables'].indexOf(seg) >= 0) return seg;
       return null;
     }
 
@@ -3155,6 +3878,14 @@
         $('screen-app').classList.add('hidden');
         return;
       }
+      if (seg === 'tables' && token) {
+        showApp('tables');
+        return;
+      }
+      if (seg === 'workspace' && wr.module === 'tables' && token) {
+        showApp('tables');
+        return;
+      }
       if (seg === 'workspace' && wr.module && token) {
         showApp('more', { workspaceModule: wr.module });
         return;
@@ -3163,8 +3894,10 @@
       if (token) {
         showApp(wantTab || pathSegmentToTab());
       } else {
-        if (wantTab) sessionStorage.setItem('crm_tab_after_login', seg);
-        if (seg === 'workspace' && wr.module) sessionStorage.setItem('crm_workspace_module', wr.module);
+        if (seg === 'tables') sessionStorage.setItem('crm_tab_after_login', 'tables');
+        else if (seg === 'workspace' && wr.module === 'tables') sessionStorage.setItem('crm_tab_after_login', 'tables');
+        else if (wantTab) sessionStorage.setItem('crm_tab_after_login', seg);
+        if (seg === 'workspace' && wr.module && wr.module !== 'tables') sessionStorage.setItem('crm_workspace_module', wr.module);
         $('screen-login').classList.remove('hidden');
         $('screen-app').classList.add('hidden');
       }
@@ -3197,7 +3930,7 @@
       });
       var navMoreEl = $('nav-more');
       if (navMoreEl) navMoreEl.classList.toggle('on', tab === 'more');
-      var titles = { dashboard: 'Dashboard', pos: 'Point of sale', kitchen: 'Kitchen', orders: 'Order history', reports: 'Reports', more: 'Operations' };
+      var titles = { dashboard: 'Dashboard', pos: 'Point of sale', kitchen: 'Kitchen', orders: 'Order history', reports: 'Reports', tables: 'Tables & reservations', more: 'Operations' };
       var tb = $('topbarTitle');
       if (tb) tb.textContent = titles[tab] || 'Restaurant CRM';
       if (tab==='dashboard') dashStats();
@@ -3206,6 +3939,7 @@
       else { stopKitchenPoll(); }
       if (tab==='orders' && sync) syncOrdersHistoryPage();
       if (tab==='reports' && sync) { dashStats(); renderReports($('reports-body')); }
+      if (tab==='tables' && sync) reloadTablesView();
       if (tab==='more'){
         if (!opts.preserveMoreModule) {
           currentOpsSlug = null;
@@ -3273,6 +4007,8 @@
     function applyModulesNav(){
       var f = parseModules((sync&&sync.settings&&sync.settings.modules_json)||'');
       $('nav-kitchen').classList.toggle('hidden', !f.kitchen);
+      var nt = $('nav-tables');
+      if (nt) nt.classList.toggle('hidden', !f.tables);
     }
 
     function openPay(pkg, qs){
@@ -3281,7 +4017,7 @@
       else window.location.href = 'upi://pay?'+qs;
     }
     function wireProfile(){
-      $('openProfile').onclick = function(){
+      function openProf(){
         $('prof-user').textContent = 'Signed in with your API token.';
         $('prof-venue').textContent = 'Venue: '+((sync&&sync.settings&&sync.settings.venue_name)||'—');
         var pr = $('plan-rows'); pr.innerHTML = '';
@@ -3303,7 +4039,10 @@
           pr.appendChild(b);
         });
         $('profileBackdrop').classList.add('open');
-      };
+      }
+      var op = $('openProfile'), opt = $('openProfileTables');
+      if (op) op.onclick = openProf;
+      if (opt) opt.onclick = openProf;
       $('closeProfile').onclick = function(){ $('profileBackdrop').classList.remove('open'); };
       $('profileBackdrop').onclick = function(e){ if(e.target=== $('profileBackdrop')) $('profileBackdrop').classList.remove('open'); };
       $('closePlan').onclick = function(){ $('planBackdrop').classList.remove('open'); };
@@ -3355,8 +4094,10 @@
         var wm = sessionStorage.getItem('crm_workspace_module') || '';
         sessionStorage.removeItem('crm_workspace_module');
         var t = segmentToTab(raw);
-        if (t === 'more' && wm) showApp('more', { workspaceModule: wm });
-        else showApp(t);
+        if (wm === 'tables') {
+          showApp('tables');
+        } else if (t === 'more' && wm) showApp('more', { workspaceModule: wm });
+        else showApp(t || 'dashboard');
       });
     };
     $('btnSeed').onclick = function(){ api('POST','/sync/seed-defaults/',{}).then(function(r){ if(r.ok) loadSync().then(function(){ dashStats(); renderPos(); alert('Sample data loaded.'); }); else alert('Seed failed (maybe already has data).'); }); };
@@ -3417,9 +4158,16 @@
       var hc = $('orderHistClose');
       var ec = $('orderHistEditClose');
       var eb = $('orderHistEditBtn');
+      var pb = $('orderHistPrintBtn');
       if (hc && bd) {
         hc.onclick = function(){ orderHistDetailId = null; bd.classList.remove('open'); };
         bd.onclick = function(e){ if (e.target === bd) { orderHistDetailId = null; bd.classList.remove('open'); } };
+      }
+      if (pb) {
+        pb.onclick = function(){
+          if (orderHistDetailId == null) return;
+          printOrderBillWeb(orderHistDetailId);
+        };
       }
       if (eb) {
         eb.onclick = function(){
@@ -3430,6 +4178,28 @@
       if (ec && ed) {
         ec.onclick = function(){ orderHistEditId = null; ed.classList.remove('open'); };
         ed.onclick = function(e){ if (e.target === ed) { orderHistEditId = null; ed.classList.remove('open'); } };
+      }
+      var kab = $('kitchenActionsBackdrop');
+      var kc = $('kitchenActionsClose');
+      if (kab && kc) {
+        kc.onclick = function(){ closeKitchenOrderMenu(); };
+        kab.onclick = function(e){ if (e.target === kab) closeKitchenOrderMenu(); };
+        kab.querySelectorAll('.kitchen-act').forEach(function(btn){
+          btn.onclick = function(){
+            var oid = kitchenMenuOrderId;
+            if (oid == null) return;
+            var act = btn.getAttribute('data-kact');
+            closeKitchenOrderMenu();
+            if (act === 'view') openOrderHistDetail(oid);
+            else if (act === 'edit') openOrderHistEdit(oid);
+            else if (act === 'cancel') {
+              if (!confirm('Order #' + oid + ' will leave the kitchen queue and be marked cancelled.')) return;
+              patchOrderLifecycle(oid, 'CANCELLED', function(ok){
+                if (ok) loadSync().then(function(){ renderKitchen(); syncOrdersHistoryPage(); dashStats(); renderPos(); });
+              });
+            }
+          };
+        });
       }
     })();
 
@@ -3446,6 +4216,10 @@
       if ($('screen-app').classList.contains('hidden')) return;
       if (s0 === 'workspace') {
         var rawMod = parts[1] ? parts[1].toLowerCase().replace(/-/g, '_') : '';
+        if (rawMod === 'tables') {
+          showTab('tables', { skipUrl: true });
+          return;
+        }
         showTab('more', { preserveMoreModule: true, skipUrl: true });
         if (rawMod && sync) {
           var mod = WEB_MODULES.find(function(x){ return x.slug === rawMod; });

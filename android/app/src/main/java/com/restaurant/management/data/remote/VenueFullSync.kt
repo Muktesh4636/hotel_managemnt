@@ -11,6 +11,7 @@ import com.restaurant.management.data.local.entity.OrderLineEntity
 import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
 import com.restaurant.management.data.local.entity.TableEntity
+import com.restaurant.management.data.local.entity.TableReservationEntity
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -30,6 +31,7 @@ object VenueFullSync {
         val staff = root.optJSONArray("staff") ?: JSONArray()
         val absences = root.optJSONArray("staff_absences") ?: JSONArray()
         val expenses = root.optJSONArray("expenses") ?: JSONArray()
+        val reservations = root.optJSONArray("reservations") ?: JSONArray()
         val settings = root.optJSONObject("settings")
 
         db.withTransaction {
@@ -41,6 +43,7 @@ object VenueFullSync {
             db.inventoryDao().deleteAll()
             db.menuDao().deleteAll()
             db.tableDao().deleteAll()
+            db.tableReservationDao().deleteAll()
 
             val tableRows =
                 buildList {
@@ -58,6 +61,30 @@ object VenueFullSync {
                 }
             if (tableRows.isNotEmpty()) {
                 db.tableDao().insertAll(tableRows)
+            }
+
+            val reservationRows =
+                buildList {
+                    for (i in 0 until reservations.length()) {
+                        val o = reservations.getJSONObject(i)
+                        add(
+                            TableReservationEntity(
+                                id = o.getLong("id"),
+                                tableId = if (o.isNull("table_id")) null else o.getLong("table_id"),
+                                guestName = o.getString("guest_name"),
+                                phone = o.optString("phone", ""),
+                                partySize = o.optInt("party_size", 1),
+                                startEpochMillis = o.getLong("start_epoch_millis"),
+                                endEpochMillis = o.getLong("end_epoch_millis"),
+                                status = o.optString("status", "PENDING"),
+                                notes = o.optString("notes").ifBlank { null },
+                                createdAtEpochMillis = o.optLong("created_at_epoch_millis", 0L),
+                            ),
+                        )
+                    }
+                }
+            if (reservationRows.isNotEmpty()) {
+                db.tableReservationDao().insertAll(reservationRows)
             }
 
             val menuRows =

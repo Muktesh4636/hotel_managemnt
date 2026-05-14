@@ -21,6 +21,7 @@ urlpatterns = [
     path("kitchen/", web_app, name="web-kitchen"),
     path("orders/", web_app, name="web-orders"),
     path("reports/", web_app, name="web-reports"),
+    path("tables/", web_app, name="web-tables"),
     # /workspace/<slug>/ must be registered before /workspace/ so module paths match.
     path("workspace/<slug:workspace_module>/", web_app, name="web-workspace-module"),
     path("workspace/", web_app, name="web-workspace"),

@@ -10,7 +10,7 @@ import com.restaurant.management.data.local.dao.ExpenseDao
 import com.restaurant.management.data.local.dao.InventoryDao
 import com.restaurant.management.data.local.dao.MenuDao
 import com.restaurant.management.data.local.dao.OrderDao
-import com.restaurant.management.data.local.dao.ReservationDao
+import com.restaurant.management.data.local.dao.TableReservationDao
 import com.restaurant.management.data.local.dao.SettingsDao
 import com.restaurant.management.data.local.dao.StaffAbsenceDao
 import com.restaurant.management.data.local.dao.StaffDao
@@ -21,7 +21,7 @@ import com.restaurant.management.data.local.entity.InventoryEntity
 import com.restaurant.management.data.local.entity.MenuItemEntity
 import com.restaurant.management.data.local.entity.OrderEntity
 import com.restaurant.management.data.local.entity.OrderLineEntity
-import com.restaurant.management.data.local.entity.ReservationEntity
+import com.restaurant.management.data.local.entity.TableReservationEntity
 import com.restaurant.management.data.local.entity.StaffAbsenceEntity
 import com.restaurant.management.data.local.entity.StaffEntity
 import com.restaurant.management.data.local.entity.TableEntity
@@ -32,14 +32,14 @@ import com.restaurant.management.data.local.entity.TableEntity
         MenuItemEntity::class,
         OrderEntity::class,
         OrderLineEntity::class,
-        ReservationEntity::class,
+        TableReservationEntity::class,
         InventoryEntity::class,
         StaffEntity::class,
         StaffAbsenceEntity::class,
         AppSettingsEntity::class,
         ExpenseEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -49,7 +49,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun orderDao(): OrderDao
 
-    abstract fun reservationDao(): ReservationDao
+    abstract fun tableReservationDao(): TableReservationDao
 
     abstract fun inventoryDao(): InventoryDao
 
@@ -181,6 +181,29 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        private val MIGRATION_8_9 =
+            object : Migration(8, 9) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("DROP TABLE IF EXISTS reservations")
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS table_reservations (
+                            id INTEGER NOT NULL PRIMARY KEY,
+                            tableId INTEGER,
+                            guestName TEXT NOT NULL,
+                            phone TEXT NOT NULL,
+                            partySize INTEGER NOT NULL,
+                            startEpochMillis INTEGER NOT NULL,
+                            endEpochMillis INTEGER NOT NULL,
+                            status TEXT NOT NULL,
+                            notes TEXT,
+                            createdAtEpochMillis INTEGER NOT NULL
+                        )
+                        """.trimIndent(),
+                    )
+                }
+            }
+
         fun getInstance(
             context: Context,
             userId: Long,
@@ -205,6 +228,7 @@ abstract class AppDatabase : RoomDatabase() {
                             MIGRATION_5_6,
                             MIGRATION_6_7,
                             MIGRATION_7_8,
+                            MIGRATION_8_9,
                         ).build()
                     instanceUserId = userId
                 }
