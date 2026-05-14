@@ -62,6 +62,14 @@
       -webkit-font-smoothing: antialiased;
     }
     .hidden { display: none !important; }
+    /* Lock CRM layout to the viewport: only .app-main scrolls; sidebar stays put */
+    #screen-app:not(.hidden) {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-height: 100dvh;
+      overflow: hidden;
+    }
     .login-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; gap: 14px; }
     .ip-banner {
       max-width: 440px; width: 100%;
@@ -150,11 +158,13 @@
     .btn-pay:hover { filter: brightness(1.05); }
     .err { color: #b91c1c; font-size: 0.8125rem; margin-top: 10px; font-weight: 500; }
     #app-shell {
-      min-height: 100vh;
+      flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: row;
       align-items: stretch;
       background: var(--surface-2);
+      overflow: hidden;
     }
     .nav-backdrop {
       display: none;
@@ -171,15 +181,100 @@
       border-right: 1px solid var(--outline-variant);
       display: flex;
       flex-direction: column;
-      min-height: 100vh;
+      min-height: 0;
       z-index: 50;
     }
     .sidebar-brand {
       padding: 20px 16px 18px;
       border-bottom: 1px solid var(--outline-variant);
+    }
+    .sidebar-brand-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .sidebar-brand-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+    .sidebar-collapse-btn {
+      flex-shrink: 0;
+      width: 38px;
+      height: 38px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--outline);
+      background: var(--surface-2);
+      color: var(--ink);
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: center;
+      margin-top: 2px;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .sidebar-collapse-btn:hover {
+      background: var(--surface-variant);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .sidebar-rail-btn {
+      display: none;
+      position: fixed;
+      left: 10px;
+      top: max(12px, env(safe-area-inset-top, 0px));
+      z-index: 48;
+      width: 44px;
+      height: 44px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--outline);
+      background: var(--surface);
+      box-shadow: var(--shadow-md);
+      color: var(--ink);
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .sidebar-rail-btn:hover {
+      background: var(--primary-container);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    @media (min-width: 901px) {
+      #app-shell.sidebar-collapsed .sidebar {
+        flex: 0 0 0;
+        width: 0;
+        max-width: 0;
+        min-width: 0;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+        border-right-width: 0;
+        transition: width 0.22s ease, max-width 0.22s ease, opacity 0.18s ease, border-width 0.18s ease;
+      }
+      #app-shell.sidebar-collapsed .shell-content {
+        padding-left: 56px;
+        transition: padding-left 0.22s ease;
+      }
+      #app-shell.sidebar-collapsed .sidebar-rail-btn {
+        display: flex;
+      }
+    }
+    @media (max-width: 900px) {
+      #app-shell.sidebar-collapsed .sidebar {
+        flex-shrink: 0;
+        width: var(--sidebar-w);
+        max-width: none;
+        opacity: 1;
+        pointer-events: auto;
+        border-right-width: 1px;
+      }
+      #app-shell.sidebar-collapsed .shell-content {
+        padding-left: 0;
+      }
     }
     .sidebar-brand-mark {
       width: 40px; height: 40px;
@@ -288,9 +383,9 @@
     .shell-content {
       flex: 1;
       min-width: 0;
+      min-height: 0;
       display: flex;
       flex-direction: column;
-      min-height: 100vh;
     }
     .mobile-topbar {
       display: none;
@@ -312,7 +407,7 @@
     }
     .menu-toggle:hover { background: var(--surface-variant); }
     .mobile-topbar-title { font-size: 0.9375rem; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
-    .app-main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
+    .app-main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; overscroll-behavior-y: contain; }
     .hdr {
       background: linear-gradient(180deg, var(--primary) 0%, var(--primary-deep) 100%);
       color: var(--on-primary);
@@ -792,6 +887,36 @@
       background: linear-gradient(180deg, var(--primary-container) 0%, var(--surface) 42%);
       box-shadow: 0 0 0 3px rgba(184, 71, 50, 0.2), var(--shadow-md);
     }
+    /* In-cart quantity: border + fill change so 1× vs 2× vs 3+ are obvious at a glance */
+    .pos-tile.cart-q1 {
+      border-color: var(--primary);
+      border-width: 2px;
+      background: linear-gradient(180deg, rgba(253, 232, 227, 0.65) 0%, var(--surface) 40%);
+    }
+    .pos-tile.cart-q2 {
+      border-color: var(--tertiary-deep);
+      border-width: 3px;
+      background: linear-gradient(180deg, var(--tertiary-container) 0%, var(--surface) 42%);
+      box-shadow: 0 0 0 1px rgba(184, 137, 46, 0.22), var(--shadow-sm);
+    }
+    .pos-tile.cart-q3 {
+      border-color: var(--secondary-deep);
+      border-width: 3px;
+      background: linear-gradient(180deg, var(--secondary-container) 0%, var(--surface) 44%);
+      box-shadow: 0 0 0 2px rgba(45, 90, 71, 0.16), var(--shadow-md);
+    }
+    .pos-tile.cart-q1:hover { border-color: var(--primary-deep); }
+    .pos-tile.cart-q2:hover { border-color: var(--tertiary); box-shadow: 0 0 0 1px rgba(184, 137, 46, 0.35), var(--shadow-md); }
+    .pos-tile.cart-q3:hover { border-color: var(--secondary); box-shadow: 0 0 0 2px rgba(45, 90, 71, 0.22), var(--shadow-md); }
+    .pos-tile.selected.cart-q1 {
+      box-shadow: 0 0 0 3px rgba(184, 71, 50, 0.25), var(--shadow-md);
+    }
+    .pos-tile.selected.cart-q2 {
+      box-shadow: 0 0 0 3px rgba(184, 137, 46, 0.28), 0 0 0 1px rgba(143, 106, 34, 0.2), var(--shadow-md);
+    }
+    .pos-tile.selected.cart-q3 {
+      box-shadow: 0 0 0 3px rgba(45, 90, 71, 0.22), 0 0 0 1px rgba(31, 64, 52, 0.15), var(--shadow-md);
+    }
     .pos-tile-cat {
       display: block;
       font-size: 0.6875rem;
@@ -851,6 +976,77 @@
       transition: background 0.12s, border-color 0.12s;
     }
     .pos-tile-qty button:hover { background: var(--surface); border-color: var(--primary); color: var(--primary); }
+    .menu-admin-add-toggle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(180deg, var(--secondary) 0%, var(--secondary-deep) 100%);
+      color: var(--on-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 10px rgba(45, 90, 71, 0.3);
+      transition: transform 0.12s, filter 0.12s, box-shadow 0.12s;
+    }
+    .menu-admin-add-toggle:hover { filter: brightness(1.06); }
+    .menu-admin-add-toggle:active { transform: scale(0.96); }
+    .menu-pos-sw {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--ink);
+      vertical-align: middle;
+      position: relative;
+    }
+    .menu-pos-sw-input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      margin: 0;
+      pointer-events: none;
+    }
+    .menu-pos-sw-track {
+      width: 44px;
+      height: 26px;
+      border-radius: 999px;
+      background: #e7e5e4;
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.15s;
+      border: 1px solid var(--outline-variant);
+    }
+    .menu-pos-sw-track::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--surface);
+      top: 2px;
+      left: 2px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+      transition: transform 0.15s ease;
+    }
+    .menu-pos-sw-input:checked + .menu-pos-sw-track {
+      background: linear-gradient(90deg, var(--secondary) 0%, var(--secondary-deep) 100%);
+      border-color: rgba(45, 90, 71, 0.35);
+    }
+    .menu-pos-sw-input:checked + .menu-pos-sw-track::after {
+      transform: translateX(18px);
+    }
+    .menu-pos-sw-input:focus-visible + .menu-pos-sw-track {
+      box-shadow: 0 0 0 3px rgba(184, 71, 50, 0.28);
+    }
+    .menu-pos-sw-text-on { color: var(--secondary-deep); }
+    .menu-pos-sw-text-off { color: #b45309; }
     .menu-admin-thumb, .kline-thumb {
       width: 44px;
       height: 44px;
@@ -910,6 +1106,25 @@
       box-shadow: var(--shadow-sm);
     }
     .card.k { background: var(--secondary-container); border-color: rgba(45, 90, 71, 0.15); color: var(--on-secondary-container); }
+    .card.oh { background: var(--tertiary-container); border-color: rgba(95, 82, 59, 0.18); color: var(--on-tertiary-container); }
+    .oh-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 12px; margin-bottom: 6px; }
+    .oh-head strong { font-size: 1rem; letter-spacing: -0.02em; }
+    .oh-meta { font-size: 0.8125rem; opacity: 0.92; margin-bottom: 10px; }
+    .oh-lines { max-height: 220px; overflow-y: auto; margin: 0 0 12px; padding: 0; border-radius: var(--r-sm); background: rgba(255,255,255,0.35); border: 1px solid rgba(0,0,0,0.06); }
+    .oh-line { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+    .oh-line:last-child { border-bottom: none; }
+    .oh-line-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(0,0,0,0.08); flex-shrink: 0; background: var(--surface-2); }
+    .oh-line-text { min-width: 0; flex: 1; }
+    .oh-line-text strong { display: block; font-size: 0.9rem; font-weight: 600; }
+    .oh-line-text .oh-line-sub { font-size: 0.78rem; opacity: 0.88; margin-top: 2px; }
+    .oh-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .oh-actions .btn-sm { font-size: 0.8125rem; padding: 6px 12px; }
+    .order-hist-modal-body { max-height: min(70vh, 520px); overflow-y: auto; }
+    .oh-edit-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--outline-variant); }
+    .oh-edit-line .qty-btns { display: flex; align-items: center; gap: 8px; }
+    .oh-edit-line .qty-btns button { min-width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--outline); background: var(--surface-2); cursor: pointer; font-weight: 700; font-size: 1rem; }
+    .oh-add-row { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--outline-variant); }
+    .oh-add-row select { width: 100%; max-width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; font: inherit; margin-bottom: 8px; }
     .ops-card {
       border-radius: var(--r-md);
       margin-bottom: 10px;
@@ -982,12 +1197,19 @@
       <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
       <aside class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-brand">
-          <div class="sidebar-brand-mark" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M4 20V4h8a4 4 0 014 4 4 4 0 01-4 4H8v8H4zm8-8a2 2 0 002-2 2 2 0 00-2-2H8v4h4z"/></svg>
-          </div>
-          <div class="sidebar-brand-text">
-            <p class="sidebar-brand-title">Restaurant CRM</p>
-            <p class="sidebar-brand-sub">Venue workspace</p>
+          <div class="sidebar-brand-top">
+            <div class="sidebar-brand-left">
+              <div class="sidebar-brand-mark" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M4 20V4h8a4 4 0 014 4 4 4 0 01-4 4H8v8H4zm8-8a2 2 0 002-2 2 2 0 00-2-2H8v4h4z"/></svg>
+              </div>
+              <div class="sidebar-brand-text">
+                <p class="sidebar-brand-title">Restaurant CRM</p>
+                <p class="sidebar-brand-sub">Venue workspace</p>
+              </div>
+            </div>
+            <button type="button" class="sidebar-collapse-btn" id="btnSidebarCollapse" title="Hide sidebar · on small screens closes the menu" aria-label="Hide sidebar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 19l-7-7 7-7M18 19l-7-7 7-7"/></svg>
+            </button>
           </div>
         </div>
         <div class="sidebar-scroll">
@@ -1033,6 +1255,9 @@
         </div>
       </aside>
       <div class="shell-content">
+        <button type="button" class="sidebar-rail-btn" id="btnSidebarExpand" title="Show sidebar" aria-label="Show sidebar">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 5l7 7-7 7M6 5l7 7-7 7"/></svg>
+        </button>
         <header class="mobile-topbar">
           <button type="button" class="menu-toggle" id="btnNavToggle" aria-label="Open menu">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -1083,7 +1308,7 @@
         <div id="page-pos" class="page hidden">
           <header class="hdr t2"><div><h1>Point of sale</h1><p>Counter &amp; takeaway orders</p></div></header>
           <div class="pad pad-pos">
-            <p class="hint">Tap an item to add <strong>1</strong> to the cart (tap again to add more). Use <strong>−</strong> / <strong>+</strong> on the tile to adjust quantity, then place order. Filter with category chips.</p>
+            <p class="hint">Tap an item to add <strong>1</strong> to the cart (tap again to add more). Use <strong>−</strong> / <strong>+</strong> on the tile to adjust quantity, then place order. Filter with category chips. <strong>Tile border:</strong> coral = 1 in cart, gold = 2, green = 3 or more.</p>
             <div class="chip-row" id="pos-chips"></div>
             <div id="pos-menu"></div>
             <div id="pos-orders"></div>
@@ -1104,7 +1329,7 @@
           <div class="pad" id="kitchen-body"></div>
         </div>
         <div id="page-orders" class="page hidden">
-          <header class="hdr"><div><h1>Order history</h1><p>All tickets — newest first</p></div></header>
+          <header class="hdr"><div><h1>Order history</h1><p>Line items on each ticket · actions match the app (pay, cancel, kitchen, edit lines)</p></div></header>
           <div class="pad" id="orders-body"></div>
         </div>
         <div id="page-reports" class="page hidden">
@@ -1151,6 +1376,19 @@
     <div class="modal-actions"><button type="button" class="btn-text" id="closePosSummary">Close</button></div>
   </div></div>
 
+  <div class="modal-backdrop" id="orderHistBackdrop"><div class="modal modal-wide"><div class="modal-h"><h2 id="orderHistTitle">Order</h2></div>
+    <div class="modal-body order-hist-modal-body" id="orderHistBody"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-text" id="orderHistClose">Close</button>
+      <button type="button" class="btn btn-outline" id="orderHistEditBtn">Edit items</button>
+    </div>
+  </div></div>
+
+  <div class="modal-backdrop" id="orderHistEditBackdrop"><div class="modal modal-wide"><div class="modal-h"><h2 id="orderHistEditTitle">Edit order</h2></div>
+    <div class="modal-body order-hist-modal-body" id="orderHistEditBody"></div>
+    <div class="modal-actions"><button type="button" class="btn-text" id="orderHistEditClose">Done</button></div>
+  </div></div>
+
   {{ web_modules|json_script:"web-modules-data" }}
   {{ billing_plans|json_script:"billing-plans-data" }}
   {{ web_route|json_script:"web-route-data" }}
@@ -1175,10 +1413,13 @@
     var sync = null;
     var cart = {};
     var kitchenPollTimer = null;
+    var orderHistDetailId = null;
+    var orderHistEditId = null;
     var posCat = null;
     var posSelectedId = null;
     var currentOpsSlug = null;
     var editingMenuId = null;
+    var menuAdminShowAddForm = false;
     var editingExpenseId = null;
     var expenseWebAddCat = null;
     var token = localStorage.getItem(TOKEN_KEY);
@@ -1659,7 +1900,7 @@
       var t0 = startToday();
       var orders = (sync&&sync.orders)||[];
       var rev = orders.filter(function(o){ return o.status==='PAID' && o.created_at_epoch_millis>=t0; }).reduce(function(s,o){ return s+(o.total_cents||0); },0);
-      var active = orders.filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status)<0; }).length;
+      var ordersToday = orders.filter(function(o){ return (o.created_at_epoch_millis||0) >= t0; }).length;
       var exp = (sync&&sync.expenses)||[];
       var expSum = exp.filter(function(e){ return e.created_at_epoch_millis>=t0; }).reduce(function(s,e){ return s+(e.amount_cents||0); },0);
       var staff = (sync&&sync.staff)||[];
@@ -1669,7 +1910,7 @@
         '<div class="stat s0"><div class="lbl">Today\'s net profit</div><div class="val">'+money(net)+'</div></div>'+
         '<div class="stat s1"><div class="lbl">Today\'s paid sales</div><div class="val">'+money(rev)+'</div></div>'+
         '<div class="stat s2"><div class="lbl">Today\'s expenses</div><div class="val">'+money(expSum)+'</div></div>'+
-        '<div class="stat s3"><div class="lbl">Active orders</div><div class="val">'+active+'</div></div>';
+        '<div class="stat s3"><div class="lbl">Total orders today</div><div class="val">'+ordersToday+'</div></div>';
       renderDashboardCharts();
     }
 
@@ -1677,6 +1918,43 @@
     function isQrDirectKitchenOrder(o){
       var n = (o.notes || '').trim();
       return n === 'QR menu' || n.toLowerCase() === 'qr guest web' || n.toLowerCase().indexOf('qr guest') === 0;
+    }
+
+    function orderStatusPretty(st){
+      var map = { OPEN: 'Open', IN_KITCHEN: 'In kitchen', READY: 'Ready', SERVED: 'Served', PAID: 'Paid', CANCELLED: 'Cancelled' };
+      return map[st] || st || '—';
+    }
+    function orderTableLabel(tableId){
+      if (tableId == null || tableId === '') return '—';
+      var t = (sync.tables||[]).find(function(x){ return x.id === tableId; });
+      return t ? (t.label || ('#' + tableId)) : ('#' + tableId);
+    }
+    function fmtOrderWhen(ms){
+      try { return new Date(ms).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return ''; }
+    }
+    /**
+     * Pay or cancel an order and free the table when this ticket had a table (matches Android app behaviour).
+     */
+    function patchOrderLifecycle(oid, nextStatus, onDone){
+      var o = (sync.orders||[]).find(function(x){ return x.id === oid; });
+      api('PATCH','/orders/'+oid+'/',{status:nextStatus}).then(function(r){
+        if (!r.ok) {
+          var msg = (r.data && (r.data.detail || (r.data.status && r.data.status[0]))) || 'Could not update order.';
+          alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+          if (onDone) onDone(false);
+          return;
+        }
+        var after = function(){
+          loadSync().then(function(){
+            if (onDone) onDone(true);
+          });
+        };
+        if (o && o.table_id != null && (nextStatus === 'PAID' || nextStatus === 'CANCELLED')) {
+          api('PATCH','/tables/'+o.table_id+'/',{status:'FREE'}).then(function(){ after(); });
+        } else {
+          after();
+        }
+      });
     }
 
     function renderPos(){
@@ -1700,8 +1978,9 @@
       list.forEach(function(m){
         var q = cart[m.id]||0;
         var sel = posSelectedId === m.id ? ' selected' : '';
+        var qTier = q >= 3 ? ' cart-q3' : (q === 2 ? ' cart-q2' : (q === 1 ? ' cart-q1' : ''));
         mh +=
-          '<div class="pos-tile'+sel+'" data-id="'+m.id+'" role="button" tabindex="0" aria-pressed="'+(posSelectedId===m.id?'true':'false')+'">'+
+          '<div class="pos-tile'+qTier+sel+'" data-id="'+m.id+'" role="button" tabindex="0" aria-pressed="'+(posSelectedId===m.id?'true':'false')+'">'+
           '<div class="pos-tile-img-wrap"><img class="pos-tile-img" src="'+escapeHtml(menuItemDisplayImageUrl(m))+'" alt="" loading="lazy" decoding="async" draggable="false"/></div>'+
           '<span class="pos-tile-cat">'+escapeHtml(m.category||'Menu')+'</span>'+
           '<span class="pos-tile-name">'+escapeHtml(m.name)+'</span>'+
@@ -1765,8 +2044,8 @@
       $('pos-orders').innerHTML = posOpen.length?oh:'';
       $('pos-orders').querySelectorAll('button[data-act]').forEach(function(b){
         b.onclick = function(){ var oid=+b.getAttribute('data-oid'), act=b.getAttribute('data-act');
-          if (act==='pay') api('PATCH','/orders/'+oid+'/',{status:'PAID'}).then(function(){ loadSync().then(function(){ renderPos(); dashStats(); }); });
-          else if (act==='cancel') api('PATCH','/orders/'+oid+'/',{status:'CANCELLED'}).then(function(){ loadSync().then(function(){ renderPos(); dashStats(); }); });
+          if (act==='pay') patchOrderLifecycle(oid,'PAID',function(){ renderPos(); dashStats(); });
+          else if (act==='cancel') patchOrderLifecycle(oid,'CANCELLED',function(){ renderPos(); dashStats(); });
           else if (act==='kitchen') api('PATCH','/orders/'+oid+'/',{status:'IN_KITCHEN'}).then(function(){ loadSync().then(function(){ renderPos(); dashStats(); }); });
         };
       });
@@ -1882,6 +2161,7 @@
 
     function openModule(slug, title, opts){
       opts = opts || {};
+      if (slug !== 'menu_admin') menuAdminShowAddForm = false;
       var pm = $('page-more');
       if (!pm || pm.classList.contains('hidden')) {
         showTab('more', { preserveMoreModule: true, skipUrl: true });
@@ -1907,6 +2187,7 @@
       if (!opts.skipUrl) pushWorkspaceBrowserUrl();
     }
     $('moreBack').onclick = function(){
+      menuAdminShowAddForm = false;
       currentOpsSlug = null;
       setSidebarOpsActive(null);
       $('more-detail').classList.add('hidden');
@@ -2286,7 +2567,7 @@
       var ord = sync.orders || [];
       var exp = sync.expenses || [];
       var rev = ord.filter(function(o){ return o.status === 'PAID' && o.created_at_epoch_millis >= t0; }).reduce(function(s,o){ return s+(o.total_cents||0); },0);
-      var active = ord.filter(function(o){ return ['PAID','CANCELLED'].indexOf(o.status)<0; }).length;
+      var ordersToday = ord.filter(function(o){ return (o.created_at_epoch_millis||0) >= t0; }).length;
       var expSum = exp.filter(function(e){ return e.created_at_epoch_millis>=t0; }).reduce(function(s,e){ return s+(e.amount_cents||0); },0);
       var staff = sync.staff || [];
       var sal = staff.reduce(function(s,m){ return s+(m.salary_cents||0); },0);
@@ -2297,7 +2578,7 @@
           '<div class="stat s0"><div class="lbl">Today\'s net profit</div><div class="val">'+money(net)+'</div></div>'+
           '<div class="stat s1"><div class="lbl">Today\'s paid sales</div><div class="val">'+money(rev)+'</div></div>'+
           '<div class="stat s2"><div class="lbl">Today\'s expenses</div><div class="val">'+money(expSum)+'</div></div>'+
-          '<div class="stat s3"><div class="lbl">Active orders</div><div class="val">'+active+'</div></div>';
+          '<div class="stat s3"><div class="lbl">Total orders today</div><div class="val">'+ordersToday+'</div></div>';
       }
       populateReportsCharts();
       var rInit = thisMonthBoundsLocal();
@@ -2308,11 +2589,257 @@
       wireReportRangeControls(el);
       updateReportRangeSummary(el);
     }
-    function renderOrders(el){
-      var rows = (sync.orders||[]).slice().sort(function(a,b){ return b.created_at_epoch_millis-a.created_at_epoch_millis; }).map(function(o){
-        return '<tr><td>#'+o.id+'</td><td>'+o.status+'</td><td>'+money(o.total_cents)+'</td></tr>';
+    function closeOrderHistModals(){
+      orderHistDetailId = null;
+      orderHistEditId = null;
+      var b1 = $('orderHistBackdrop'); if (b1) b1.classList.remove('open');
+      var b2 = $('orderHistEditBackdrop'); if (b2) b2.classList.remove('open');
+    }
+    function syncOrdersHistoryPage(){
+      var ob = $('orders-body');
+      if (ob && sync) renderOrders(ob);
+    }
+    function ohMenuMap(){
+      var menuMap = {};
+      (sync.menu_items||[]).forEach(function(m){ menuMap[m.id]=m; });
+      return menuMap;
+    }
+    function ohImg(m){
+      if (typeof menuItemDisplayImageUrl === 'function') return menuItemDisplayImageUrl(m||{});
+      return '';
+    }
+    function ohLinesBlockHtml(o, menuMap, compact){
+      var lines = o.lines || [];
+      if (!lines.length) return '<p class="hint" style="margin:0">No line items.</p>';
+      var ks = compact ? '' : ' · ';
+      return '<div class="oh-lines">' + lines.map(function(line){
+        var mi = menuMap[line.menu_item_id] || {};
+        var nm = mi.name || ('Item #' + line.menu_item_id);
+        var lineTot = (line.unit_price_cents||0) * (line.quantity||0);
+        var sub = '× ' + line.quantity + ' · ' + money(lineTot) + (compact ? '' : (ks + (line.kitchen_status||'')));
+        return '<div class="oh-line">'+
+          '<img class="oh-line-thumb" src="'+escapeAttr(ohImg(mi))+'" alt="" loading="lazy"/>'+
+          '<div class="oh-line-text"><strong>'+escapeHtml(nm)+'</strong><span class="oh-line-sub">'+escapeHtml(sub)+'</span></div></div>';
+      }).join('') + '</div>';
+    }
+    function ohActionsHtml(o, prefix){
+      var id = o.id;
+      var st = o.status;
+      var btns = '';
+      if (st === 'OPEN') btns += '<button type="button" class="btn btn-primary btn-sm" data-'+prefix+'-act="kitchen" data-oid="'+id+'">Send kitchen</button>';
+      if (st !== 'PAID' && st !== 'CANCELLED') {
+        btns += '<button type="button" class="btn btn-sm btn-pay" data-'+prefix+'-act="pay" data-oid="'+id+'">Pay</button>';
+        if (st !== 'PAID') btns += '<button type="button" class="btn btn-outline btn-sm" data-'+prefix+'-act="cancel" data-oid="'+id+'">Cancel</button>';
+      }
+      if ((st === 'IN_KITCHEN' || st === 'READY') && prefix === 'ohd') {
+        btns += '<button type="button" class="btn btn-secondary btn-sm" data-'+prefix+'-act="served" data-oid="'+id+'">Mark served</button>';
+      }
+      return btns ? '<div class="oh-actions" style="margin-top:10px">'+btns+'</div>' : '';
+    }
+    function wireOrderHistActionClicks(root, prefix, after){
+      if (!root) return;
+      root.querySelectorAll('[data-' + prefix + '-act]').forEach(function(b){
+        b.onclick = function(){
+          var oid = +b.getAttribute('data-oid');
+          var act = b.getAttribute('data-' + prefix + '-act');
+          if (act === 'pay') {
+            patchOrderLifecycle(oid, 'PAID', function(){
+              syncOrdersHistoryPage(); dashStats(); renderPos(); renderKitchen();
+              if (orderHistDetailId === oid) openOrderHistDetail(oid);
+              if (after) after();
+            });
+          } else if (act === 'cancel') {
+            if (!confirm('Cancel order #' + oid + '?')) return;
+            patchOrderLifecycle(oid, 'CANCELLED', function(){
+              syncOrdersHistoryPage(); dashStats(); renderPos(); renderKitchen();
+              if (orderHistDetailId === oid) openOrderHistDetail(oid);
+              if (after) after();
+            });
+          } else if (act === 'kitchen') {
+            api('PATCH','/orders/'+oid+'/',{status:'IN_KITCHEN'}).then(function(r){
+              if (!r.ok) { alert('Could not send to kitchen.'); return; }
+              loadSync().then(function(){
+                syncOrdersHistoryPage(); renderPos(); renderKitchen();
+                if (orderHistDetailId === oid) openOrderHistDetail(oid);
+                if (after) after();
+              });
+            });
+          } else if (act === 'served') {
+            api('PATCH','/orders/'+oid+'/',{status:'SERVED'}).then(function(r){
+              if (!r.ok) { alert('Could not update order.'); return; }
+              loadSync().then(function(){
+                syncOrdersHistoryPage(); renderKitchen();
+                if (orderHistDetailId === oid) openOrderHistDetail(oid);
+                if (after) after();
+              });
+            });
+          }
+        };
+      });
+    }
+    function openOrderHistDetail(orderId){
+      if (!sync) return;
+      var o = (sync.orders||[]).find(function(x){ return x.id === orderId; });
+      if (!o) return;
+      orderHistDetailId = orderId;
+      $('orderHistTitle').textContent = 'Order #' + orderId;
+      var menuMap = ohMenuMap();
+      var note = (o.notes && String(o.notes).trim()) ? '<p class="hint" style="margin-top:0">Note: '+escapeHtml(o.notes)+'</p>' : '';
+      $('orderHistBody').innerHTML =
+        '<p style="margin:0 0 8px;font-weight:600">'+escapeHtml(orderStatusPretty(o.status))+' · '+money(o.total_cents)+'</p>'+
+        '<p class="hint" style="margin-top:0">'+escapeHtml(fmtOrderWhen(o.created_at_epoch_millis))+' · '+((o.lines||[]).length)+' lines · Table '+escapeHtml(orderTableLabel(o.table_id))+'</p>'+
+        note + ohLinesBlockHtml(o, menuMap, false) + ohActionsHtml(o, 'ohd');
+      var eb = $('orderHistEditBtn');
+      if (eb) { eb.style.display = (o.status === 'CANCELLED') ? 'none' : ''; }
+      $('orderHistBackdrop').classList.add('open');
+      wireOrderHistActionClicks($('orderHistBody'), 'ohd', null);
+    }
+    function renderOrderHistEditBody(orderId){
+      if (!sync) return;
+      var o = (sync.orders||[]).find(function(x){ return x.id === orderId; });
+      var el = $('orderHistEditBody');
+      if (!o || !el) return;
+      $('orderHistEditTitle').textContent = 'Edit order #' + orderId;
+      if (o.status === 'CANCELLED') {
+        el.innerHTML = '<p class="hint">Cancelled orders cannot be edited (same rule as the Android app).</p>';
+        return;
+      }
+      var menuMap = ohMenuMap();
+      var canAdd = o.status !== 'PAID' && o.status !== 'CANCELLED';
+      var lines = o.lines || [];
+      var linesHtml = lines.map(function(line){
+        var mi = menuMap[line.menu_item_id] || {};
+        var nm = mi.name || ('Item #' + line.menu_item_id);
+        return '<div class="oh-edit-line" data-lid="'+line.id+'">'+
+          '<div style="flex:1;min-width:140px"><strong>'+escapeHtml(nm)+'</strong><div class="price-muted">'+money(line.unit_price_cents)+' each</div></div>'+
+          '<div class="qty-btns">'+
+          '<button type="button" data-ed-qty="-1" data-lid="'+line.id+'" data-mid="'+line.menu_item_id+'">−</button>'+
+          '<span style="min-width:2rem;text-align:center;font-weight:700">'+line.quantity+'</span>'+
+          '<button type="button" data-ed-qty="1" data-lid="'+line.id+'" data-mid="'+line.menu_item_id+'">+</button></div>'+
+          '</div>';
       }).join('');
-      el.innerHTML = '<table class="data"><thead><tr><th>Order</th><th>Status</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table>';
+      var avail = (sync.menu_items||[]).filter(function(m){ return m.is_available; }).sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+      var opts = '<option value="">Choose a dish to add…</option>' + avail.map(function(m){
+        return '<option value="'+m.id+'">'+escapeHtml(m.name)+' · '+money(m.price)+'</option>';
+      }).join('');
+      var addBlock = canAdd
+        ? '<div class="oh-add-row"><label class="hint" style="display:block;margin-bottom:6px;font-weight:600">Add dish</label><select id="ohEditAddSelect">'+opts+'</select>'+
+          '<button type="button" class="btn btn-primary btn-sm" id="ohEditAddBtn">Add to order</button>'+
+          '<p class="hint" style="margin-top:8px;font-size:0.78rem">New lines are not allowed on <strong>paid</strong> tickets on the server; use − / + on existing lines only.</p></div>'
+        : '<p class="hint" style="margin-top:12px">Paid order: you can change quantities on existing lines only.</p>';
+      el.innerHTML =
+        '<p class="hint" style="margin-top:0">'+escapeHtml(orderStatusPretty(o.status))+' · total '+money(o.total_cents)+'</p>'+
+        '<p class="hint" style="margin-top:0">Use − / +. At quantity zero the line is removed.</p>'+
+        (linesHtml || '<p class="hint">No lines yet — add a dish below.</p>') +
+        addBlock;
+      el.querySelectorAll('button[data-ed-qty]').forEach(function(btn){
+        btn.onclick = function(){
+          var lid = +btn.getAttribute('data-lid');
+          var delta = +btn.getAttribute('data-ed-qty');
+          var o2 = (sync.orders||[]).find(function(x){ return x.id === orderId; });
+          var line = o2 && (o2.lines||[]).find(function(l){ return l.id === lid; });
+          if (!line) return;
+          var nq = line.quantity + delta;
+          if (nq <= 0) {
+            if (!confirm('Remove this line from the order?')) return;
+            api('DELETE','/order-lines/'+lid+'/').then(function(r){
+              if (!r.ok) { alert('Could not remove line.'); return; }
+              loadSync().then(function(){
+                syncOrdersHistoryPage(); dashStats(); renderPos(); renderKitchen();
+                renderOrderHistEditBody(orderId);
+                if (orderHistDetailId === orderId) openOrderHistDetail(orderId);
+              });
+            });
+          } else {
+            api('PATCH','/order-lines/'+lid+'/',{quantity:nq}).then(function(r){
+              if (!r.ok) { alert('Could not update quantity.'); return; }
+              loadSync().then(function(){
+                syncOrdersHistoryPage(); dashStats(); renderPos(); renderKitchen();
+                renderOrderHistEditBody(orderId);
+                if (orderHistDetailId === orderId) openOrderHistDetail(orderId);
+              });
+            });
+          }
+        };
+      });
+      var addB = $('ohEditAddBtn');
+      if (addB && canAdd) {
+        addB.onclick = function(){
+          var sel = $('ohEditAddSelect');
+          var mid = sel && +sel.value;
+          if (!mid) { alert('Pick a dish first.'); return; }
+          var linesNow = ((sync.orders||[]).find(function(x){ return x.id === orderId; })||{}).lines || [];
+          var ex = linesNow.find(function(l){ return l.menu_item_id === mid; });
+          if (ex) {
+            api('PATCH','/order-lines/'+ex.id+'/',{quantity:ex.quantity+1}).then(function(r){
+              if (!r.ok) { alert('Could not add.'); return; }
+              loadSync().then(function(){ syncOrdersHistoryPage(); dashStats(); renderPos(); renderKitchen(); renderOrderHistEditBody(orderId); if (orderHistDetailId === orderId) openOrderHistDetail(orderId); });
+            });
+          } else {
+            api('POST','/order-lines/',{order_id:orderId,menu_item_id:mid,quantity:1}).then(function(r){
+              if (!r.ok) {
+                var d = r.data && (r.data.detail || r.data.order_id || r.data.menu_item_id);
+                alert(typeof d === 'string' ? d : JSON.stringify(d||r.raw||'error'));
+                return;
+              }
+              loadSync().then(function(){ syncOrdersHistoryPage(); dashStats(); renderPos(); renderKitchen(); renderOrderHistEditBody(orderId); if (orderHistDetailId === orderId) openOrderHistDetail(orderId); });
+            });
+          }
+          if (sel) sel.value = '';
+        };
+      }
+    }
+    function openOrderHistEdit(orderId){
+      orderHistEditId = orderId;
+      renderOrderHistEditBody(orderId);
+      $('orderHistEditBackdrop').classList.add('open');
+    }
+    function renderOrders(el){
+      if (!sync) {
+        el.innerHTML = '<p class="hint">Sign in and load venue data to see order history.</p>';
+        return;
+      }
+      var menuMap = ohMenuMap();
+      var ord = (sync.orders||[]).slice().sort(function(a,b){ return b.created_at_epoch_millis - a.created_at_epoch_millis; });
+      var toolbar = '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px">'+
+        '<p class="hint" style="margin:0;flex:1;min-width:200px">Newest first. Each card lists <strong>all dishes</strong> on that ticket (same data as Kitchen / Android). Use <strong>Pay</strong>, <strong>Cancel</strong>, or <strong>Send kitchen</strong> when shown.</p>'+
+        '<button type="button" class="btn btn-secondary btn-sm" id="btnOrdersRefresh">Refresh</button></div>';
+      if (!ord.length) {
+        el.innerHTML = toolbar + '<p class="hint">No orders yet.</p>';
+        var br0 = $('btnOrdersRefresh'); if (br0) br0.onclick = function(){ loadSync().then(function(){ renderOrders(el); dashStats(); }); };
+        return;
+      }
+      var cards = ord.map(function(o){
+        var id = o.id;
+        var linesBlock = ohLinesBlockHtml(o, menuMap, true);
+        var note = (o.notes && String(o.notes).trim()) ? '<p class="hint" style="margin:6px 0 0;font-size:0.78rem">'+escapeHtml(o.notes)+'</p>' : '';
+        return '<div class="card oh" data-oh-card="'+id+'">'+
+          '<div class="oh-head"><strong>Order #'+id+'</strong><span>'+money(o.total_cents)+'</span></div>'+
+          '<div class="oh-meta">'+escapeHtml(orderStatusPretty(o.status))+' · '+escapeHtml(fmtOrderWhen(o.created_at_epoch_millis))+' · '+((o.lines||[]).length)+' lines · Table '+escapeHtml(orderTableLabel(o.table_id))+'</div>'+
+          note + linesBlock +
+          '<div class="oh-actions">'+
+          '<button type="button" class="btn btn-outline btn-sm" data-oh-view="'+id+'">Details</button>'+
+          (o.status === 'CANCELLED' ? '' : '<button type="button" class="btn btn-outline btn-sm" data-oh-edit="'+id+'">Edit items</button>')+
+          '</div>'+ ohActionsHtml(o, 'oh') +
+          '</div>';
+      }).join('');
+      el.innerHTML = toolbar + cards;
+      var br = $('btnOrdersRefresh');
+      if (br) br.onclick = function(){ loadSync().then(function(){ renderOrders(el); dashStats(); }); };
+      el.querySelectorAll('[data-oh-view]').forEach(function(b){
+        b.onclick = function(){ openOrderHistDetail(+b.getAttribute('data-oh-view')); };
+      });
+      el.querySelectorAll('[data-oh-edit]').forEach(function(b){
+        b.onclick = function(){ openOrderHistEdit(+b.getAttribute('data-oh-edit')); };
+      });
+      el.querySelectorAll('.card.oh').forEach(function(card){
+        card.addEventListener('click', function(e){
+          if (e.target.closest('button')) return;
+          var id = +card.getAttribute('data-oh-card');
+          if (id) openOrderHistDetail(id);
+        });
+      });
+      wireOrderHistActionClicks(el, 'oh', null);
     }
     function renderMenuAdmin(el){
       if (!sync) return;
@@ -2339,29 +2866,58 @@
       }
       var rows = items.map(function(m){
         var src = menuItemDisplayImageUrl(m);
+        var on = !!m.is_available;
+        var swLabel = on ? 'Available' : "86'd · off menu";
+        var swCls = on ? 'menu-pos-sw-text-on' : 'menu-pos-sw-text-off';
+        var swTitle = on
+          ? 'Shown on POS tiles and guest QR menu. Turn off when out of stock (86).'
+          : 'Hidden from POS and guest QR menu — same as Android 86’d.';
+        var sw =
+          '<label class="menu-pos-sw" title="'+escapeAttr(swTitle)+'">'+
+          '<input type="checkbox" class="menu-pos-sw-input" data-mid-toggle="'+m.id+'" role="switch" aria-checked="'+(on?'true':'false')+'" aria-label="POS and guest menu visibility for '+escapeAttr(m.name)+'"'+(on?' checked':'')+' />'+
+          '<span class="menu-pos-sw-track" aria-hidden="true"></span>'+
+          '<span class="'+swCls+'">'+escapeHtml(swLabel)+'</span></label>';
         return '<tr><td style="width:56px"><img class="menu-admin-thumb" src="'+escapeHtml(src)+'" alt="" loading="lazy" draggable="false"/></td><td>'+escapeHtml(m.name)+'</td><td>'+escapeHtml(m.category)+'</td><td>'+money(m.price)+'</td>'+
-          '<td><button type="button" class="btn-text" data-mid-toggle="'+m.id+'">'+(m.is_available?'On menu':'Hidden')+'</button></td>'+
+          '<td style="white-space:nowrap">'+sw+'</td>'+
           '<td style="min-width:12rem"><button type="button" class="btn-text" data-mid-edit="'+m.id+'">Edit</button> '+
           '<input type="file" accept="image/jpeg,image/png,image/webp" data-mid-photo="'+m.id+'" style="display:none"/>'+
           '<button type="button" class="btn-text" data-mid-photo-btn="'+m.id+'">Photo</button> '+
           '<button type="button" class="btn-text" style="color:#b3261e" data-mid-del="'+m.id+'">Delete</button></td></tr>';
       }).join('');
-      var tbody = rows || '<tr><td colspan="6" class="hint" style="padding:12px">No menu rows yet — add below or use “Load sample…” on Home.</td></tr>';
+      var tbody = rows || '<tr><td colspan="6" class="hint" style="padding:12px">No menu rows yet — tap <strong>+</strong> to add a dish, or use “Load sample…” on Home.</td></tr>';
       var catSelect = '<label>Category</label><select id="new-menu-cat" style="width:100%;max-width:100%;box-sizing:border-box;padding:10px;border-radius:8px;font:inherit;margin-bottom:10px">';
       cats.forEach(function(c){
         catSelect += '<option value="'+escapeAttr(c)+'">'+escapeHtml(c)+'</option>';
       });
       catSelect += '</select>';
-      el.innerHTML =
-        '<p class="hint">Same actions as the Android app: add items, toggle <strong>86 / availability</strong>, <strong>Edit</strong> name/category/price, <strong>Photo</strong> to upload (JPEG/PNG/WebP), or <strong>Delete</strong>. Price is stored as paise on the server.</p>'+editPanel+
-        '<div style="margin-bottom:18px;padding:14px;border:1px solid var(--outline-variant);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm)">'+
-        '<p style="margin:0 0 10px;font-weight:700">Add menu item</p>'+
-        '<label>Name</label><input id="new-menu-name" placeholder="e.g. Masala dosa" />'+
-        catSelect+
-        '<p class="hint" style="margin:0 0 8px;font-size:0.8rem">Categories come from Global settings — edit the list there, Save, then reload.</p>'+
-        '<label>Price (₹)</label><input id="new-menu-price" type="number" step="0.01" min="0" placeholder="120" />'+
-        '<button type="button" class="btn btn-primary" id="btn-add-menu" style="margin-top:12px">Add to menu</button></div>'+
-        '<table class="data"><thead><tr><th></th><th>Name</th><th>Cat</th><th>Price</th><th>Availability</th><th>Actions</th></tr></thead><tbody>'+tbody+'</tbody></table>';
+      var toolbar =
+        '<div class="menu-admin-toolbar" style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px;flex-wrap:wrap">'+
+        '<p class="hint" style="margin:0;flex:1;min-width:200px">Same as the Android <strong>Menu</strong> screen. Use the <strong>switch</strong> to 86 an item when it is <strong>out of stock</strong> — it disappears from <strong>POS</strong> tiles and the <strong>guest QR menu</strong>. <strong>Edit</strong>, <strong>Photo</strong> (JPEG/PNG/WebP), or <strong>Delete</strong>. Prices are in paise on the server. Tap <strong>+</strong> to add a dish.</p>'+
+        '<button type="button" class="menu-admin-add-toggle'+(menuAdminShowAddForm?' is-open':'')+'" id="btn-menu-admin-toggle-add" title="'+(menuAdminShowAddForm?'Close add form':'Add menu item')+'" aria-label="'+(menuAdminShowAddForm?'Close add form':'Add menu item')+'">'+
+        (menuAdminShowAddForm
+          ? '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+          : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>')+
+        '</button></div>';
+      var addFormPanel = '';
+      if (menuAdminShowAddForm) {
+        addFormPanel =
+          '<div id="menu-admin-add-panel" style="margin-bottom:18px;padding:14px;border:1px solid var(--outline-variant);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm)">'+
+          '<p style="margin:0 0 10px;font-weight:700">Add menu item</p>'+
+          '<label>Name</label><input id="new-menu-name" placeholder="e.g. Masala dosa" />'+
+          catSelect+
+          '<p class="hint" style="margin:0 0 8px;font-size:0.8rem">Categories come from Global settings — edit the list there, Save, then reload.</p>'+
+          '<label>Price (₹)</label><input id="new-menu-price" type="number" step="0.01" min="0" placeholder="120" />'+
+          '<button type="button" class="btn btn-primary" id="btn-add-menu" style="margin-top:12px">Add to menu</button></div>';
+      }
+      el.innerHTML = editPanel + toolbar + addFormPanel +
+        '<table class="data"><thead><tr><th></th><th>Name</th><th>Cat</th><th>Price</th><th>POS &amp; QR visibility</th><th>Actions</th></tr></thead><tbody>'+tbody+'</tbody></table>';
+      var toggleAdd = $('btn-menu-admin-toggle-add');
+      if (toggleAdd) {
+        toggleAdd.onclick = function(){
+          menuAdminShowAddForm = !menuAdminShowAddForm;
+          renderMenuAdmin(el);
+        };
+      }
       var addBtn = $('btn-add-menu');
       if (addBtn) addBtn.onclick = function(){
         var name = ($('new-menu-name').value||'').trim();
@@ -2375,6 +2931,7 @@
         var price = Math.round(rupees * 100);
         api('POST','/menu-items/',{name:name,category:cat,price:price,is_available:true,custom_photo_url:''}).then(function(r){
           if (r.ok) {
+            menuAdminShowAddForm = false;
             $('new-menu-name').value = '';
             if (sel) sel.selectedIndex = 0;
             $('new-menu-price').value = '';
@@ -2407,16 +2964,24 @@
           else alert('Save failed');
         });
       };
-      el.querySelectorAll('button[data-mid-toggle]').forEach(function(b){
-        b.onclick = function(){
-          var id = +b.getAttribute('data-mid-toggle');
-          var m = items.find(function(x){ return x.id === id; });
-          if (!m) return;
-          api('PATCH','/menu-items/'+id+'/',{ is_available: !m.is_available }).then(function(){ loadSync().then(function(){ renderMenuAdmin($('moreContent')); }); });
-        };
+      el.querySelectorAll('input[data-mid-toggle].menu-pos-sw-input').forEach(function(inp){
+        inp.addEventListener('change', function(){
+          var id = +inp.getAttribute('data-mid-toggle');
+          var want = inp.checked;
+          inp.setAttribute('aria-checked', want ? 'true' : 'false');
+          api('PATCH','/menu-items/'+id+'/',{ is_available: want }).then(function(r){
+            if (!r.ok) {
+              inp.checked = !want;
+              inp.setAttribute('aria-checked', !want ? 'true' : 'false');
+              alert('Could not update visibility.');
+              return;
+            }
+            loadSync().then(function(){ renderMenuAdmin($('moreContent')); });
+          });
+        });
       });
       el.querySelectorAll('button[data-mid-edit]').forEach(function(b){
-        b.onclick = function(){ editingMenuId = +b.getAttribute('data-mid-edit'); renderMenuAdmin(el); };
+        b.onclick = function(){ menuAdminShowAddForm = false; editingMenuId = +b.getAttribute('data-mid-edit'); renderMenuAdmin(el); };
       });
       el.querySelectorAll('button[data-mid-del]').forEach(function(b){
         b.onclick = function(){
@@ -2496,6 +3061,53 @@
       if (s) s.classList.remove('open');
       if (b) b.classList.remove('open');
     }
+
+    var SIDEBAR_COLLAPSED_KEY = 'crm_sidebar_collapsed';
+    function isDesktopSidebarLayout(){
+      return typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 901px)').matches;
+    }
+    function applySidebarCollapsedFromStorage(){
+      var shell = $('app-shell');
+      if (!shell) return;
+      if (!isDesktopSidebarLayout()) {
+        shell.classList.remove('sidebar-collapsed');
+        return;
+      }
+      if (sessionStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1') shell.classList.add('sidebar-collapsed');
+      else shell.classList.remove('sidebar-collapsed');
+    }
+    function setDesktopSidebarCollapsed(collapsed){
+      var shell = $('app-shell');
+      if (!shell) return;
+      if (!isDesktopSidebarLayout()) return;
+      if (collapsed) {
+        shell.classList.add('sidebar-collapsed');
+        sessionStorage.setItem(SIDEBAR_COLLAPSED_KEY, '1');
+      } else {
+        shell.classList.remove('sidebar-collapsed');
+        sessionStorage.removeItem(SIDEBAR_COLLAPSED_KEY);
+      }
+    }
+    function wireSidebarCollapseControls(){
+      var sc = $('btnSidebarCollapse');
+      if (sc) {
+        sc.onclick = function(){
+          if (isDesktopSidebarLayout()) setDesktopSidebarCollapsed(true);
+          else closeMobileNav();
+        };
+      }
+      var se = $('btnSidebarExpand');
+      if (se) {
+        se.onclick = function(){
+          setDesktopSidebarCollapsed(false);
+        };
+      }
+    }
+    var sidebarResizeTimer = null;
+    window.addEventListener('resize', function(){
+      if (sidebarResizeTimer) clearTimeout(sidebarResizeTimer);
+      sidebarResizeTimer = setTimeout(function(){ applySidebarCollapsedFromStorage(); }, 140);
+    });
 
     function pathSegmentToTab(){
       var parts = (location.pathname || '/').split('/').filter(Boolean);
@@ -2592,7 +3204,7 @@
       if (tab==='pos') renderPos();
       if (tab==='kitchen') { renderKitchen(); startKitchenPoll(); }
       else { stopKitchenPoll(); }
-      if (tab==='orders' && sync) renderOrders($('orders-body'));
+      if (tab==='orders' && sync) syncOrdersHistoryPage();
       if (tab==='reports' && sync) { dashStats(); renderReports($('reports-body')); }
       if (tab==='more'){
         if (!opts.preserveMoreModule) {
@@ -2627,6 +3239,7 @@
         };
       }
       if (bd) bd.onclick = closeMobileNav;
+      wireSidebarCollapseControls();
       var dlApk = $('sidebarDownloadApk');
       if (dlApk) {
         dlApk.addEventListener('click', function(e){
@@ -2701,6 +3314,7 @@
       appOpts = appOpts || {};
       $('screen-login').classList.add('hidden');
       $('screen-app').classList.remove('hidden');
+      applySidebarCollapsedFromStorage();
       var tab0 = initialTab || 'dashboard';
       loadSync().then(function(ok){
         if(!ok){ alert('Could not load venue data'); return; }
@@ -2754,6 +3368,9 @@
       setSidebarOpsActive(null);
       setOpsNavExpanded(false);
       closeMobileNav();
+      sessionStorage.removeItem(SIDEBAR_COLLAPSED_KEY);
+      var shell = $('app-shell');
+      if (shell) shell.classList.remove('sidebar-collapsed');
       $('screen-app').classList.add('hidden'); $('screen-login').classList.remove('hidden');
       history.replaceState({}, '', '/sign-in/');
     }
@@ -2793,6 +3410,28 @@
     if (btnPosSum) btnPosSum.onclick = openPosOrderSummary;
     $('closePosSummary').onclick = function(){ $('posSummaryBackdrop').classList.remove('open'); };
     $('posSummaryBackdrop').onclick = function(e){ if (e.target === $('posSummaryBackdrop')) $('posSummaryBackdrop').classList.remove('open'); };
+
+    (function wireOrderHistoryModals(){
+      var bd = $('orderHistBackdrop');
+      var ed = $('orderHistEditBackdrop');
+      var hc = $('orderHistClose');
+      var ec = $('orderHistEditClose');
+      var eb = $('orderHistEditBtn');
+      if (hc && bd) {
+        hc.onclick = function(){ orderHistDetailId = null; bd.classList.remove('open'); };
+        bd.onclick = function(e){ if (e.target === bd) { orderHistDetailId = null; bd.classList.remove('open'); } };
+      }
+      if (eb) {
+        eb.onclick = function(){
+          if (orderHistDetailId == null) return;
+          openOrderHistEdit(orderHistDetailId);
+        };
+      }
+      if (ec && ed) {
+        ec.onclick = function(){ orderHistEditId = null; ed.classList.remove('open'); };
+        ed.onclick = function(e){ if (e.target === ed) { orderHistEditId = null; ed.classList.remove('open'); } };
+      }
+    })();
 
     wireNav();
     wireProfile();
